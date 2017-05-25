@@ -8484,8 +8484,8 @@ var _user$project$Benvolio$update = F2(
 				};
 		}
 	});
-var _user$project$Benvolio$partnerSideOfConversation = {stance: 'Pizza sucks', reason1: 'Not enough possible pepperoni', reason2: 'The crust is always soggy', reason3: 'It\'s too mainstream', empathy1: 'Eric prefers warm food to cold food', empathy2: 'His favorite vegatable are tomatoes, which are a main ingredient on pizzas', empathy3: 'His favorite meat is sausage, which is a great pizza topping'};
-var _user$project$Benvolio$initiatorSideOfConversation = {stance: 'It\'s good', reason1: 'Warm', reason2: 'Tomaotes', reason3: 'Sausage', empathy1: 'Pepperoni is her favorite flavor, and diluting it even a little is an insult', empathy2: 'She ate a soggy pizza and got sick when she was a kid', empathy3: 'Life can feel boring if you\'re doing what everyone else is doing'};
+var _user$project$Benvolio$partnerSideOfConversation = {stance: '', reason1: '', reason2: '', reason3: '', empathy1: '', empathy2: '', empathy3: ''};
+var _user$project$Benvolio$initiatorSideOfConversation = {stance: '', reason1: '', reason2: '', reason3: '', empathy1: '', empathy2: '', empathy3: ''};
 var _user$project$Benvolio$Model = F4(
 	function (a, b, c, d) {
 		return {step: a, topic: b, initiator: c, partner: d};
@@ -8504,10 +8504,10 @@ var _user$project$Benvolio$Male = {ctor: 'Male'};
 var _user$project$Benvolio$Partner = {ctor: 'Partner'};
 var _user$project$Benvolio$Initiator = {ctor: 'Initiator'};
 var _user$project$Benvolio$initialModel = {
-	step: 19,
-	topic: 'Pizza',
-	initiator: A4(_user$project$Benvolio$Person, _user$project$Benvolio$Initiator, 'Eric', _user$project$Benvolio$Male, _user$project$Benvolio$initiatorSideOfConversation),
-	partner: A4(_user$project$Benvolio$Person, _user$project$Benvolio$Partner, 'Jenna', _user$project$Benvolio$Female, _user$project$Benvolio$partnerSideOfConversation)
+	step: 1,
+	topic: '',
+	initiator: A4(_user$project$Benvolio$Person, _user$project$Benvolio$Initiator, '', _user$project$Benvolio$Male, _user$project$Benvolio$initiatorSideOfConversation),
+	partner: A4(_user$project$Benvolio$Person, _user$project$Benvolio$Partner, '', _user$project$Benvolio$Male, _user$project$Benvolio$partnerSideOfConversation)
 };
 var _user$project$Benvolio$init = {ctor: '_Tuple2', _0: _user$project$Benvolio$initialModel, _1: _elm_lang$core$Platform_Cmd$none};
 var _user$project$Benvolio$viewEmpathySummary = F3(
