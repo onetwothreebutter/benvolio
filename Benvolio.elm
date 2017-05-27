@@ -252,6 +252,13 @@ view model =
     case model.step of
         1 ->
             div []
+                [ label [] [ text ("Hi! What topic would you like to discuss?") ]
+                , input [ onInput ConversationTopic, value model.topic ] []
+                , viewNextBackButtons model.step
+                ]
+
+        2 ->
+            div []
                 [ label [] [ text "What's your name?" ]
                 , Html.map InitiatorUpdate (viewPersonName model.initiator)
                 , div []
@@ -259,13 +266,6 @@ view model =
                     , Html.map InitiatorUpdate (viewPersonGender model.initiator)
                     , viewNextBackButtons model.step
                     ]
-                ]
-
-        2 ->
-            div []
-                [ label [] [ text ("Hi " ++ model.initiator.name ++ "! What topic would you like to discuss?") ]
-                , input [ onInput ConversationTopic, value model.topic ] []
-                , viewNextBackButtons model.step
                 ]
 
         3 ->
@@ -455,7 +455,9 @@ view model =
                 , text
                     ("Why do you think "
                         ++ model.partner.name
-                        ++ " listed these reasons? What would you have had to experience to hold those same reasons?"
+                        ++ " listed these reasons? Try to be empathetic and don't say things liKe \"Because "
+                        ++ model.partner.name
+                        ++ " is an idiot\"."
                     )
                 , div []
                     [ Html.map InitiatorUpdate (viewPersonEmpathy1 model.initiator)
@@ -535,7 +537,9 @@ view model =
                 , text
                     ("Why do you think "
                         ++ model.initiator.name
-                        ++ " listed these reasons? What would you have had to experience to hold those same reasons?"
+                        ++ " listed these reasons?  Try to be empathetic and don't say things liKe \"Because "
+                        ++ model.initiator.name
+                        ++ " is an idiot\"."
                     )
                 , div []
                     [ Html.map PartnerUpdate (viewPersonEmpathy1 model.partner)

@@ -9001,6 +9001,41 @@ var _user$project$Benvolio$view = function (model) {
 						{ctor: '[]'},
 						{
 							ctor: '::',
+							_0: _elm_lang$html$Html$text('Hi! What topic would you like to discuss?'),
+							_1: {ctor: '[]'}
+						}),
+					_1: {
+						ctor: '::',
+						_0: A2(
+							_elm_lang$html$Html$input,
+							{
+								ctor: '::',
+								_0: _elm_lang$html$Html_Events$onInput(_user$project$Benvolio$ConversationTopic),
+								_1: {
+									ctor: '::',
+									_0: _elm_lang$html$Html_Attributes$value(model.topic),
+									_1: {ctor: '[]'}
+								}
+							},
+							{ctor: '[]'}),
+						_1: {
+							ctor: '::',
+							_0: _user$project$Benvolio$viewNextBackButtons(model.step),
+							_1: {ctor: '[]'}
+						}
+					}
+				});
+		case 2:
+			return A2(
+				_elm_lang$html$Html$div,
+				{ctor: '[]'},
+				{
+					ctor: '::',
+					_0: A2(
+						_elm_lang$html$Html$label,
+						{ctor: '[]'},
+						{
+							ctor: '::',
 							_0: _elm_lang$html$Html$text('What\'s your name?'),
 							_1: {ctor: '[]'}
 						}),
@@ -9038,45 +9073,6 @@ var _user$project$Benvolio$view = function (model) {
 										}
 									}
 								}),
-							_1: {ctor: '[]'}
-						}
-					}
-				});
-		case 2:
-			return A2(
-				_elm_lang$html$Html$div,
-				{ctor: '[]'},
-				{
-					ctor: '::',
-					_0: A2(
-						_elm_lang$html$Html$label,
-						{ctor: '[]'},
-						{
-							ctor: '::',
-							_0: _elm_lang$html$Html$text(
-								A2(
-									_elm_lang$core$Basics_ops['++'],
-									'Hi ',
-									A2(_elm_lang$core$Basics_ops['++'], model.initiator.name, '! What topic would you like to discuss?'))),
-							_1: {ctor: '[]'}
-						}),
-					_1: {
-						ctor: '::',
-						_0: A2(
-							_elm_lang$html$Html$input,
-							{
-								ctor: '::',
-								_0: _elm_lang$html$Html_Events$onInput(_user$project$Benvolio$ConversationTopic),
-								_1: {
-									ctor: '::',
-									_0: _elm_lang$html$Html_Attributes$value(model.topic),
-									_1: {ctor: '[]'}
-								}
-							},
-							{ctor: '[]'}),
-						_1: {
-							ctor: '::',
-							_0: _user$project$Benvolio$viewNextBackButtons(model.step),
 							_1: {ctor: '[]'}
 						}
 					}
@@ -9746,7 +9742,13 @@ var _user$project$Benvolio$view = function (model) {
 								A2(
 									_elm_lang$core$Basics_ops['++'],
 									'Why do you think ',
-									A2(_elm_lang$core$Basics_ops['++'], model.partner.name, ' listed these reasons? What would you have had to experience to hold those same reasons?'))),
+									A2(
+										_elm_lang$core$Basics_ops['++'],
+										model.partner.name,
+										A2(
+											_elm_lang$core$Basics_ops['++'],
+											' listed these reasons? Try to be empathetic and don\'t say things liKe \"Because ',
+											A2(_elm_lang$core$Basics_ops['++'], model.partner.name, ' is an idiot\".'))))),
 							_1: {
 								ctor: '::',
 								_0: A2(
@@ -9959,7 +9961,13 @@ var _user$project$Benvolio$view = function (model) {
 								A2(
 									_elm_lang$core$Basics_ops['++'],
 									'Why do you think ',
-									A2(_elm_lang$core$Basics_ops['++'], model.initiator.name, ' listed these reasons? What would you have had to experience to hold those same reasons?'))),
+									A2(
+										_elm_lang$core$Basics_ops['++'],
+										model.initiator.name,
+										A2(
+											_elm_lang$core$Basics_ops['++'],
+											' listed these reasons?  Try to be empathetic and don\'t say things liKe \"Because ',
+											A2(_elm_lang$core$Basics_ops['++'], model.initiator.name, ' is an idiot\".'))))),
 							_1: {
 								ctor: '::',
 								_0: A2(
