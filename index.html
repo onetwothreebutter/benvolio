@@ -1,14 +1,55 @@
 <html>
 <head>
-  <meta charset="utf-8">
-  <link rel="stylesheet" href="style.css">
-  <script src="benvolio.js"></script>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="style.css">
+    <script src="benvolio.js"></script>
 </head>
 <body>
-  <div id="elm-container"></div>
+<div id="elm-container"></div>
+
+<script src="https://www.gstatic.com/firebasejs/4.0.0/firebase.js"></script>
+<script>
+    // Initialize Firebase
+    var config = {
+        apiKey: "AIzaSyAoaKNnuvLu55svDpa-VPopclhkZww0RxQ",
+        authDomain: "benvolio-a3059.firebaseapp.com",
+        databaseURL: "https://benvolio-a3059.firebaseio.com",
+        projectId: "benvolio-a3059",
+        storageBucket: "benvolio-a3059.appspot.com",
+        messagingSenderId: "203313718732"
+    };
+    firebase.initializeApp(config);
+</script>
 
 <script type="text/javascript">
-  var app = Elm.Main.embed(document.getElementById("elm-container"));
+    var app = Elm.Main.embed(document.getElementById("elm-container"));
+
+    app.ports.saveConversation.subscribe(function(appModel) {
+
+        // Get a reference to the database service
+        var database = firebase.database();
+        var firebaseKey = appModel.firebaseKey;
+        if (firebaseKey === "") {
+            firebaseKey = firebase.database().ref().child('conversations').push().key;
+            appModel.firebaseKey = firebaseKey;
+            app.ports.getFirebaseKey.send(firebaseKey);
+        }
+
+        var updates = {};
+        updates['/conversations/' + firebaseKey] = appModel;
+
+        return firebase.database().ref().update(updates);
+    });
+
+
+    app.ports.getConversationFromFirebase.subscribe(function(firebaseKey) {
+        var appModel = firebase.database().ref('/conversations/' + firebaseKey).once('value').then(function(snapshot) {
+            app.ports.sendConversationIntoElm.send(snapshot.val());
+        });
+    });
+
+
+
 </script>
 </body>
 </html>
