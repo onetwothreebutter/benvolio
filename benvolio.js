@@ -15639,8 +15639,8 @@ var _rtfeldman$elm_css_helpers$Html_CssHelpers$Namespace = F4(
 		return {$class: a, classList: b, id: c, name: d};
 	});
 
-var _user$project$Model$partnerSideOfConversation = {stance: 'Pizza sucks', reason1: 'Not enough possible pepperoni', reason2: 'The crust is always soggy', reason3: 'It\'s too mainstream', empathy1: 'Eric prefers warm food to cold food', empathy2: 'His favorite vegatable are tomatoes, which are a main ingredient on pizzas', empathy3: 'His favorite meat is sausage, which is a great pizza topping', question1: 'Have you tried cold pizza for breakfast?', question2: 'Have you tried a pizza with just tomatoes and no oregano?', question3: 'What\'s your second favorite pizza meat?', answer1: 'I do know that, but it doesn\'t seem to matter for this conversation', answer2: 'I like clothes', answer3: 'No, I\'ve heard of pizza stones, but haven\'t used them'};
-var _user$project$Model$initiatorSideOfConversation = {stance: 'Sausage and tomato pizza is the best', reason1: 'Warm food is delicious', reason2: 'Tomaotes on a pizza taste soo good', reason3: 'Sausage is my favorite meat', empathy1: 'Pepperoni is her favorite flavor, and diluting it even a little is an insult', empathy2: 'She ate a soggy pizza and got sick when she was a kid', empathy3: 'Life can feel boring if you\'re doing what everyone else is doing', question1: 'Did you know tomatoes are a fruit?', question2: 'Are there other mainstream things that you like?', question3: 'Have you tried pizzas cooked with pizza stones?', answer1: 'No, that sounds gross!', answer2: 'No, I\'m curious what tomatoes by themselves taste like', answer3: 'Hamburger'};
+var _user$project$Model$partnerSideOfConversation = {stance: '', reason1: '', reason2: '', reason3: '', empathy1: '', empathy2: '', empathy3: '', question1: '', question2: '', question3: '', answer1: '', answer2: '', answer3: ''};
+var _user$project$Model$initiatorSideOfConversation = {stance: '', reason1: '', reason2: '', reason3: '', empathy1: '', empathy2: '', empathy3: '', question1: '', question2: '', question3: '', answer1: '', answer2: '', answer3: ''};
 var _user$project$Model$Model = F5(
 	function (a, b, c, d, e) {
 		return {firebaseKey: a, step: b, topic: c, initiator: d, partner: e};
@@ -15683,10 +15683,10 @@ var _user$project$Model$Partner = {ctor: 'Partner'};
 var _user$project$Model$Initiator = {ctor: 'Initiator'};
 var _user$project$Model$initialModel = {
 	firebaseKey: '',
-	step: 6,
-	topic: 'Pizza',
-	initiator: A4(_user$project$Model$Person, _user$project$Model$Initiator, 'Eric', _user$project$Model$Male, _user$project$Model$initiatorSideOfConversation),
-	partner: A4(_user$project$Model$Person, _user$project$Model$Partner, 'Jenna', _user$project$Model$Female, _user$project$Model$partnerSideOfConversation)
+	step: 1,
+	topic: '',
+	initiator: A4(_user$project$Model$Person, _user$project$Model$Initiator, '', _user$project$Model$Male, _user$project$Model$initiatorSideOfConversation),
+	partner: A4(_user$project$Model$Person, _user$project$Model$Partner, '', _user$project$Model$Male, _user$project$Model$partnerSideOfConversation)
 };
 
 var _user$project$Update$parseLocation = function (location) {
