@@ -32,6 +32,12 @@ type SideOfConversationMsg
     | Empathy1 String
     | Empathy2 String
     | Empathy3 String
+    | Question1 String
+    | Question2 String
+    | Question3 String
+    | Answer1 String
+    | Answer2 String
+    | Answer3 String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -132,6 +138,24 @@ updateSideOfConversation conversationMsg conversation =
 
         Empathy3 newEmpathy3 ->
             { conversation | empathy3 = newEmpathy3 }
+
+        Question1 newQuestion1 ->
+            { conversation | question1 = newQuestion1 }
+
+        Question2 newQuestion2 ->
+            { conversation | question2 = newQuestion2 }
+
+        Question3 newQuestion3 ->
+            { conversation | question3 = newQuestion3 }
+
+        Answer1 newAnswer1 ->
+            { conversation | answer1 = newAnswer1 }
+
+        Answer2 newAnswer2 ->
+            { conversation | answer2 = newAnswer2 }
+
+        Answer3 newAnswer3 ->
+            { conversation | answer3 = newAnswer3 }
 
 
 port saveConversation : Json.Encode.Value -> Cmd msg
@@ -272,6 +296,12 @@ sideOfConvDecoder =
         |> required "empathy1" Json.Decode.string
         |> required "empathy2" Json.Decode.string
         |> required "empathy3" Json.Decode.string
+        |> required "question1" Json.Decode.string
+        |> required "question2" Json.Decode.string
+        |> required "question3" Json.Decode.string
+        |> required "answer1" Json.Decode.string
+        |> required "answer2" Json.Decode.string
+        |> required "answer3" Json.Decode.string
 
 
 parseLocation : Location -> Maybe String

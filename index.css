@@ -1,0 +1,100 @@
+.benvolio-ConversationContainer {
+    max-width: 700px;
+    font-size: 18px;
+}
+
+.benvolio-BackNextButtonGroup {
+    margin-top: 30px;
+}
+
+.benvolio-BackNextButton {
+    padding: 10px 20px;
+    margin-right: 20px;
+    font-size: 14px;
+}
+
+.benvolio-BackNextButton:hover {
+    cursor: pointer;
+}
+
+.benvolio-CurrentStep {
+    margin-top: 20px;
+    font-size: 15px;
+}
+
+.benvolio-SectionHeading {
+    margin-bottom: 30px;
+    font-size: 32px;
+}
+
+.benvolio-IntroSentence {
+    margin-bottom: 20px;
+}
+
+.benvolio-Topic {
+    font-size: 20px;
+    margin-bottom: 20px;
+}
+
+.benvolio-SideOfConversation {
+    padding: 10px;
+    background-color: rgb(245, 255, 250);
+    border: 1px solid #2ECC40;
+    border-radius: 10px;
+    margin-bottom: 30px;
+    max-width: 600px;
+}
+
+.benvolio-Initiator {
+    border-color: #2ECC40;
+    background-color: rgb(245, 255, 250);
+}
+
+.benvolio-Partner {
+    border-color: #2b98e2;
+    background-color: rgb(240, 248, 255);
+}
+
+.benvolio-InputText {
+    display: block;
+    max-width: 700px;
+    width: 700px;
+    padding: 5px 10px;
+    font-size: 15px;
+    margin-bottom: 13px;
+}
+
+.benvolio-Question {
+    margin: 0px 0px 20px 0px;
+}
+
+.benvolio-QuestionInput {
+    display: block;
+    max-width: 700px;
+    width: 700px;
+    padding: 5px 10px;
+    font-size: 15px;
+    margin-bottom: 13px;
+}
+
+.benvolio-PassToOtherPerson {
+    display: inline-block;
+    background-color: rgba(255, 220, 0, 0.11);
+    padding: 10px;
+}
+
+.benvolio-PassToOtherPersonSender {
+    margin-bottom: 20px;
+}
+
+.benvolio-QuestionsSection {
+    margin-bottom: 30px;
+}
+
+.benvolio-QuestionAnswerSet {
+    margin-bottom: 20px;
+}
+
+.benvolio-Answer {
+    margin-left: 30px;
+}

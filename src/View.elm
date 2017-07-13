@@ -3,40 +3,58 @@ module View exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import String exposing (..)
+import Char exposing (..)
 import Model exposing (..)
 import Update exposing (..)
+import Html.CssHelpers exposing (..)
+import MyCss
+import QuestionAnswerText
+
+
+{ id, class, classList } =
+    Html.CssHelpers.withNamespace "benvolio-"
 
 
 view : Model -> Html Msg
 view model =
+    div [ class [ MyCss.ConversationContainer ] ]
+        [ viewStep model
+        , viewNextBackButtons model.step
+        ]
+
+
+viewStep : Model -> Html Msg
+viewStep model =
     case model.step of
         1 ->
             div []
-                [ label [] [ text ("Hi! What topic would you like to discuss?") ]
-                , input [ onInput ConversationTopic, value model.topic ] []
-                , viewNextBackButtons model.step
+                [ div []
+                    [ text
+                        ("Hi! Benvolio is a website that helps two people understand each other better. ")
+                    ]
+                , label [] [ text ("What topic would you like to discuss?") ]
+                , input [ onInput ConversationTopic, value model.topic, class [ MyCss.InputText ] ] []
                 ]
 
         2 ->
             div []
-                [ label [] [ text "What's your name?" ]
+                [ label [] [ text "What's your first name?" ]
                 , Html.map InitiatorUpdate (viewPersonName model.initiator)
                 , div []
                     [ label [] [ text "And what's your gender?" ]
                     , Html.map InitiatorUpdate (viewPersonGender model.initiator)
-                    , viewNextBackButtons model.step
                     ]
                 ]
 
         3 ->
             div []
-                [ label [] [ text ("With who would you like to discuss \"" ++ model.topic ++ "\"?") ]
+                [ label [] [ text ("And what's the first name of the person with whom you would like to discuss \"" ++ model.topic ++ "\"?") ]
                 , div [] [ Html.map PartnerUpdate (viewPersonName model.partner) ]
                 , div []
                     [ text "And what's this person's gender?"
                     , Html.map PartnerUpdate (viewPersonGender model.partner)
                     ]
-                , viewNextBackButtons model.step
                 ]
 
         4 ->
@@ -52,7 +70,6 @@ view model =
                     ]
                 , label [] [ text ("What is your position on \"" ++ model.topic ++ "\"?") ]
                 , Html.map InitiatorUpdate (viewPersonStance model.initiator)
-                , viewNextBackButtons model.step
                 ]
 
         5 ->
@@ -81,7 +98,6 @@ view model =
                     [ label [] [ text "Reason 3:" ]
                     , Html.map InitiatorUpdate (viewPersonReason3 model.initiator)
                     ]
-                , viewNextBackButtons model.step
                 ]
 
         6 ->
@@ -94,7 +110,7 @@ view model =
                             ++ model.topic
                             ++ "\". You think \""
                             ++ model.initiator.sideOfConversation.stance
-                            ++ "\" because : "
+                            ++ "\" because: "
                         )
                     ]
                 , viewListOfReasons
@@ -102,19 +118,26 @@ view model =
                     , model.initiator.sideOfConversation.reason2
                     , model.initiator.sideOfConversation.reason3
                     ]
-                , div []
-                    [ text ("Hand this over to " ++ model.partner.name ++ " if you're ready for " ++ (herHim model.partner.gender) ++ " to enter " ++ (herHis model.partner.gender) ++ " stance and reasons.")
-                    ]
-                , viewNextBackButtons model.step
+                , instructionsForTransferToOtherPerson model.initiator model.partner
                 ]
 
         7 ->
             div []
-                [ text (model.partner.name ++ ", " ++ model.initiator.name ++ " would like to talk with you about \"" ++ model.topic ++ "\". [show initiator stance here?]")
+                [ text
+                    (model.partner.name
+                        ++ ", "
+                        ++ model.initiator.name
+                        ++ " would like to talk with you about \""
+                        ++ model.topic
+                        ++ "\". "
+                        ++ (sheHe model.initiator.gender |> capitalize)
+                        ++ " thinks \""
+                        ++ model.initiator.sideOfConversation.stance
+                        ++ "\"."
+                    )
                 , div []
                     [ label [] [ text ("What's your stance on \"" ++ model.topic ++ "\"?") ]
                     , Html.map PartnerUpdate (viewPersonStance model.partner)
-                    , viewNextBackButtons model.step
                     ]
                 ]
 
@@ -142,7 +165,6 @@ view model =
                         , Html.map PartnerUpdate (viewPersonReason3 model.partner)
                         ]
                     ]
-                , viewNextBackButtons model.step
                 ]
 
         9 ->
@@ -150,9 +172,9 @@ view model =
                 [ text
                     ("You're talking about \""
                         ++ model.topic
-                        ++ "\" with \""
+                        ++ "\" with "
                         ++ model.initiator.name
-                        ++ "\". You think \""
+                        ++ ". You think \""
                         ++ model.partner.sideOfConversation.stance
                         ++ "\" because :"
                     )
@@ -161,16 +183,7 @@ view model =
                     , model.partner.sideOfConversation.reason2
                     , model.partner.sideOfConversation.reason3
                     ]
-                , div []
-                    [ text
-                        ("If the above is correct, hand this to "
-                            ++ model.initiator.name
-                            ++ " so "
-                            ++ (sheHe model.initiator.gender)
-                            ++ " can see your stance and reasons and answer another question."
-                        )
-                    ]
-                , viewNextBackButtons model.step
+                , instructionsForTransferToOtherPerson model.partner model.initiator
                 ]
 
         10 ->
@@ -180,7 +193,9 @@ view model =
                         ++ model.initiator.name
                         ++ "! Below you will see "
                         ++ model.partner.name
-                        ++ "'s stance, and "
+                        ++ "'s stance on \""
+                        ++ model.topic
+                        ++ "\", and "
                         ++ (herHis model.partner.gender)
                         ++ " reasons why "
                         ++ (sheHe model.partner.gender)
@@ -190,7 +205,6 @@ view model =
                     [ viewStanceSummary model.partner
                     , viewReasonsSummary model.partner
                     ]
-                , viewNextBackButtons model.step
                 ]
 
         11 ->
@@ -215,7 +229,9 @@ view model =
                 , text
                     ("Why do you think "
                         ++ model.partner.name
-                        ++ " listed these reasons? Try to be empathetic and don't say things liKe \"Because "
+                        ++ " listed these reasons? Be empathetic and make a genuine effort to understand "
+                        ++ (herHis model.partner.gender)
+                        ++ " viewpoint. Try not to say things like \"Because "
                         ++ model.partner.name
                         ++ " is an idiot\"."
                     )
@@ -228,7 +244,6 @@ view model =
                 , div []
                     [ Html.map InitiatorUpdate (viewPersonEmpathy3 model.initiator)
                     ]
-                , viewNextBackButtons model.step
                 ]
 
         12 ->
@@ -254,7 +269,6 @@ view model =
                         ++ (sheHe model.partner.gender)
                         ++ " can empathize about your reasons."
                     )
-                , viewNextBackButtons model.step
                 ]
 
         13 ->
@@ -274,7 +288,6 @@ view model =
                     [ viewStanceSummary model.initiator
                     , viewReasonsSummary model.initiator
                     ]
-                , viewNextBackButtons model.step
                 ]
 
         14 ->
@@ -297,9 +310,11 @@ view model =
                 , text
                     ("Why do you think "
                         ++ model.initiator.name
-                        ++ " listed these reasons?  Try to be empathetic and don't say things liKe \"Because "
+                        ++ " listed these reasons?  Try to be empathetic and make a genuine effort to undertand "
+                        ++ (herHis model.initiator.gender)
+                        ++ " viewpoint. Don't say things like \""
                         ++ model.initiator.name
-                        ++ " is an idiot\"."
+                        ++ " thinks that because he's an idiot.\""
                     )
                 , div []
                     [ Html.map PartnerUpdate (viewPersonEmpathy1 model.partner)
@@ -310,7 +325,6 @@ view model =
                 , div []
                     [ Html.map PartnerUpdate (viewPersonEmpathy3 model.partner)
                     ]
-                , viewNextBackButtons model.step
                 ]
 
         15 ->
@@ -318,69 +332,112 @@ view model =
                 [ text ("Here is a summary of your empathy for " ++ model.initiator.name ++ "'s reasons: ")
                 , viewEmpathySummary model Partner False
                 , text ("Click \"next\" to see " ++ model.initiator.name ++ "'s empathy for your reasons.")
-                , viewNextBackButtons model.step
                 ]
 
         16 ->
             div []
                 [ text ("Below is " ++ model.initiator.name ++ "'s empathy for your reasons.")
                 , viewEmpathySummary model Initiator False
-                , viewNextBackButtons model.step
                 ]
 
         17 ->
             div []
-                [ text
-                    ("When you're done, pass this back to "
-                        ++ model.initiator.name
-                        ++ " so "
-                        ++ sheHe model.initiator.gender
-                        ++ " can see your empathy."
-                    )
-                , viewNextBackButtons model.step
+                [ instructionsForTransferToOtherPerson model.partner model.initiator
                 ]
 
         18 ->
             div []
                 [ text ("Hi " ++ model.initiator.name ++ "! Below is " ++ model.partner.name ++ "'s empathy for your reasons.")
                 , viewEmpathySummary model Partner False
-                , viewNextBackButtons model.step
                 ]
 
         19 ->
             div []
-                [ text ("You can stop here and view a final summary together, or you can proceed to the next phase where you pose questions to each other to further increase understanding.")
-                , br [] []
-                , br [] []
-                , div []
-                    [ div [] [ text ("Topic: " ++ model.topic) ]
-                    , viewStanceSummary model.initiator
-                    , viewReasonsSummary model.initiator
-                    , viewEmpathySummary model Initiator True
+                [ div [ class [ MyCss.IntroSentence ] ]
+                    [ text ("You can stop here and view a final summary together, or you can proceed to the next phase where you pose questions to each other to further increase understanding.")
                     ]
-                , br [] []
-                , div []
-                    [ viewStanceSummary model.partner
-                    , viewReasonsSummary model.partner
-                    , viewEmpathySummary model Partner True
-                    ]
-                , viewNextBackButtons model.step
+                , div [ class [ MyCss.Topic ] ] [ text ("Topic: " ++ model.topic) ]
+                , viewFirstConversationSummary model
                 ]
 
         20 ->
             div []
-                []
+                [ viewQuestionsPlusText model.initiator model.partner
+                ]
+
+        21 ->
+            div []
+                [ viewQuestionsSummaryBeforeSend model.initiator model.partner
+                ]
+
+        22 ->
+            div []
+                [ viewReceiverAnswersQuestions model.initiator model.partner
+                ]
+
+        23 ->
+            div []
+                [ viewQuestionsPlusText model.partner model.initiator
+                ]
+
+        24 ->
+            div []
+                [ viewQuestionsSummaryBeforeSend model.partner model.initiator
+                ]
+
+        25 ->
+            div []
+                [ viewReceiverAnswersQuestions model.partner model.initiator
+                ]
+
+        26 ->
+            div []
+                [ text
+                    (model.initiator.name
+                        ++ ", here are your answers to "
+                        ++ model.partner.name
+                        ++ "'s questions."
+                    )
+                , viewQuestionsAndAnswers model.partner model.initiator
+                , instructionsForTransferToOtherPerson model.initiator model.partner
+                ]
+
+        27 ->
+            div []
+                [ text
+                    (model.partner.name
+                        ++ ", here are "
+                        ++ model.initiator.name
+                        ++ "'s answers to your questions."
+                    )
+                , viewQuestionsAndAnswers model.partner model.initiator
+                , div [ class [ MyCss.PassToOtherPerson ] ] [ text "Click 'Next' to view a summary of the Question and Answer Section" ]
+                ]
+
+        28 ->
+            div []
+                [ div [ class [ MyCss.SectionHeading ] ]
+                    [ text ("Question and Answer Section summary")
+                    ]
+                , div [ class [ MyCss.Topic ] ] [ text ("Topic: " ++ model.topic) ]
+                , viewQuestionSectionSummary model
+                , instructionsForTransferToOtherPerson model.partner model.initiator
+                ]
+
+        29 ->
+            div []
+                [ text "The end"
+                ]
 
         _ ->
             div []
                 [ text "undefined step"
-                , viewNextBackButtons model.step
                 ]
 
 
 viewPersonName : Person -> Html PersonMsg
 viewPersonName person =
-    input [ onInput NameUpdate, value person.name ] []
+    input [ onInput NameUpdate, value person.name, class [ MyCss.InputText ] ] []
 
 
 viewPersonGender : Person -> Html PersonMsg
@@ -403,37 +460,52 @@ viewPersonGender person =
 
 viewPersonStance : Person -> Html PersonMsg
 viewPersonStance person =
-    Html.map ConversationUpdate (input [ onInput Stance, value person.sideOfConversation.stance, size 100 ] [])
+    Html.map ConversationUpdate (input [ onInput Stance, value person.sideOfConversation.stance, class [ MyCss.InputText ] ] [])
 
 
 viewPersonReason1 : Person -> Html PersonMsg
 viewPersonReason1 person =
-    Html.map ConversationUpdate (input [ onInput Reason1, value person.sideOfConversation.reason1, size 100 ] [])
+    Html.map ConversationUpdate (input [ onInput Reason1, value person.sideOfConversation.reason1, class [ MyCss.InputText ] ] [])
 
 
 viewPersonReason2 : Person -> Html PersonMsg
 viewPersonReason2 person =
-    Html.map ConversationUpdate (input [ onInput Reason2, value person.sideOfConversation.reason2, size 100 ] [])
+    Html.map ConversationUpdate (input [ onInput Reason2, value person.sideOfConversation.reason2, class [ MyCss.InputText ] ] [])
 
 
 viewPersonReason3 : Person -> Html PersonMsg
 viewPersonReason3 person =
-    Html.map ConversationUpdate (input [ onInput Reason3, value person.sideOfConversation.reason3, size 100 ] [])
+    Html.map ConversationUpdate (input [ onInput Reason3, value person.sideOfConversation.reason3, class [ MyCss.InputText ] ] [])
 
 
 viewPersonEmpathy1 : Person -> Html PersonMsg
 viewPersonEmpathy1 person =
-    Html.map ConversationUpdate (input [ onInput Empathy1, value person.sideOfConversation.empathy1, size 100 ] [])
+    Html.map ConversationUpdate (input [ onInput Empathy1, value person.sideOfConversation.empathy1, class [ MyCss.InputText ] ] [])
 
 
 viewPersonEmpathy2 : Person -> Html PersonMsg
 viewPersonEmpathy2 person =
-    Html.map ConversationUpdate (input [ onInput Empathy2, value person.sideOfConversation.empathy2, size 100 ] [])
+    Html.map ConversationUpdate (input [ onInput Empathy2, value person.sideOfConversation.empathy2, class [ MyCss.InputText ] ] [])
 
 
 viewPersonEmpathy3 : Person -> Html PersonMsg
 viewPersonEmpathy3 person =
-    Html.map ConversationUpdate (input [ onInput Empathy3, value person.sideOfConversation.empathy3, size 100 ] [])
+    Html.map ConversationUpdate (input [ onInput Empathy3, value person.sideOfConversation.empathy3, class [ MyCss.InputText ] ] [])
+
+
+viewPersonQuestion1 : Person -> Html PersonMsg
+viewPersonQuestion1 person =
+    Html.map ConversationUpdate (input [ onInput Question1, value person.sideOfConversation.question1, size 100, class [ MyCss.QuestionInput ] ] [])
+
+
+viewPersonQuestion2 : Person -> Html PersonMsg
+viewPersonQuestion2 person =
+    Html.map ConversationUpdate (input [ onInput Question2, value person.sideOfConversation.question2, size 100, class [ MyCss.QuestionInput ] ] [])
+
+
+viewPersonQuestion3 : Person -> Html PersonMsg
+viewPersonQuestion3 person =
+    Html.map ConversationUpdate (input [ onInput Question3, value person.sideOfConversation.question3, size 100, class [ MyCss.QuestionInput ] ] [])
 
 
 viewStanceSummary : Person -> Html msg
@@ -495,7 +567,179 @@ viewEmpathySummary model role labelOn =
                     ]
                 ]
         else
-            text ""
+            div []
+                [ text "No empathy entered"
+                ]
+
+
+viewFirstConversationSummary : Model -> Html msg
+viewFirstConversationSummary model =
+    div []
+        [ div [ class [ MyCss.SideOfConversation, MyCss.Initiator ] ]
+            [ viewStanceSummary model.initiator
+            , viewReasonsSummary model.initiator
+            , viewEmpathySummary model Initiator True
+            ]
+        , div [ class [ MyCss.SideOfConversation, MyCss.Partner ] ]
+            [ viewStanceSummary model.partner
+            , viewReasonsSummary model.partner
+            , viewEmpathySummary model Partner True
+            ]
+        ]
+
+
+viewQuestionsPlusText : Person -> Person -> Html Msg
+viewQuestionsPlusText questionAsker questionAnswerer =
+    div []
+        [ div [ class [ MyCss.QuestionsSection ] ]
+            [ text
+                ("In this section, you can ask "
+                    ++ questionAnswerer.name
+                    ++ " three questions about "
+                    ++ (herHis questionAnswerer.gender)
+                    ++ " stance, reasons, or empathy, or anything eles you think will help you understand "
+                    ++ (herHim questionAnswerer.gender)
+                    ++ " or help "
+                    ++ (herHim questionAnswerer.gender)
+                    ++ " understand you. Don't ask qustions like \"Why are you such an idiot?\""
+                )
+            ]
+        , div [ class [ "questions-prompt" ] ]
+            [ text ("What are three questions you have for " ++ questionAnswerer.name ++ "?")
+            ]
+        , div []
+            [ Html.map InitiatorUpdate (viewPersonQuestion1 questionAsker)
+            , Html.map InitiatorUpdate (viewPersonQuestion2 questionAsker)
+            , Html.map InitiatorUpdate (viewPersonQuestion3 questionAsker)
+            ]
+        ]
+
+
+viewQuestionsSummaryBeforeSend : Person -> Person -> Html Msg
+viewQuestionsSummaryBeforeSend sender receiver =
+    div []
+        [ text ("Here are the questions you're going to send to " ++ (receiver.name) ++ ":")
+        , viewQuestionsSummary sender.sideOfConversation
+        , instructionsForTransferToOtherPerson sender receiver
+        ]
+
+
+viewReceiverAnswersQuestions : Person -> Person -> Html Msg
+viewReceiverAnswersQuestions sender receiver =
+    let
+        updateMsg =
+            if receiver.role == Initiator then
+                InitiatorUpdate
+            else
+                PartnerUpdate
+    in
+        div []
+            [ text
+                ("Hi, "
+                    ++ receiver.name
+                    ++ "! "
+                    ++ sender.name
+                    ++ " has written 3 questions "
+                    ++ sheHe sender.gender
+                    ++ " would like you to answer. Hopefully these questions will increase understanding between you and "
+                    ++ sender.name
+                    ++ "."
+                )
+            , div
+                []
+                [ Html.map updateMsg (viewQuestionsReadyToAnswer sender.sideOfConversation receiver.sideOfConversation)
+                ]
+            ]
+
+
+viewQuestionsAndAnswers : Person -> Person -> Html msg
+viewQuestionsAndAnswers asker answerer =
+    div []
+        [ ul []
+            [ li [ class [ QuestionAnswerText.QuestionAnswerSet ] ]
+                [ span [ class [ QuestionAnswerText.Question ] ]
+                    [ text asker.sideOfConversation.question1
+                    ]
+                , li [ class [ QuestionAnswerText.Answer ] ]
+                    [ text answerer.sideOfConversation.answer1
+                    ]
+                ]
+            , li [ class [ QuestionAnswerText.QuestionAnswerSet ] ]
+                [ span [ class [ QuestionAnswerText.Question ] ]
+                    [ text asker.sideOfConversation.question2
+                    ]
+                , li [ class [ QuestionAnswerText.Answer ] ]
+                    [ text answerer.sideOfConversation.answer2
+                    ]
+                ]
+            , li [ class [ QuestionAnswerText.QuestionAnswerSet ] ]
+                [ span [ class [ QuestionAnswerText.Question ] ]
+                    [ text asker.sideOfConversation.question3
+                    ]
+                , li [ class [ QuestionAnswerText.Answer ] ]
+                    [ text answerer.sideOfConversation.answer3
+                    ]
+                ]
+            ]
+        ]
+
+
+viewQuestionsAndAnswersWithCaption : Person -> Person -> Html msg
+viewQuestionsAndAnswersWithCaption asker answerer =
+    div []
+        [ text (asker.name ++ "'s questions and " ++ answerer.name ++ "'s answers")
+        , viewQuestionsAndAnswers asker answerer
+        ]
+
+
+viewQuestionsSummary : SideOfConversation -> Html msg
+viewQuestionsSummary sideOfConv =
+    if sideOfConv.question1 /= "" then
+        div []
+            [ ul []
+                [ li [] [ text sideOfConv.question1 ]
+                , li [] [ text sideOfConv.question2 ]
+                , li [] [ text sideOfConv.question3 ]
+                ]
+            ]
+    else
+        text ""
+
+
+viewQuestionsReadyToAnswer : SideOfConversation -> SideOfConversation -> Html PersonMsg
+viewQuestionsReadyToAnswer sideOfConv1 sideOfConv2 =
+    Html.map ConversationUpdate
+        (ul []
+            [ li [ class [ MyCss.Question ] ]
+                [ label [ class [ "question__label" ] ] [ text sideOfConv1.question1 ]
+                , input [ onInput Answer1, value sideOfConv2.answer1, class [ MyCss.QuestionInput ] ] []
+                ]
+            , li [ class [ MyCss.Question ] ]
+                [ label [ class [ "question__label" ] ] [ text sideOfConv1.question2 ]
+                , input [ onInput Answer2, value sideOfConv2.answer2, class [ MyCss.QuestionInput ] ] []
+                ]
+            , li [ class [ MyCss.Question ] ]
+                [ label [ class [ "question__label" ] ] [ text sideOfConv1.question3 ]
+                , input [ onInput Answer3, value sideOfConv2.answer3, class [ MyCss.QuestionInput ] ] []
+                ]
+            ]
+        )
+
+
+viewQuestionSectionSummary : Model -> Html msg
+viewQuestionSectionSummary model =
+    div []
+        [ div [ class [ MyCss.SideOfConversation, MyCss.Initiator ] ]
+            [ viewStanceSummary model.initiator
+            , viewReasonsSummary model.initiator
+            , viewQuestionsAndAnswersWithCaption model.initiator model.partner
+            ]
+        , div [ class [ MyCss.SideOfConversation, MyCss.Partner ] ]
+            [ viewStanceSummary model.partner
+            , viewReasonsSummary model.partner
+            , viewQuestionsAndAnswersWithCaption model.partner model.initiator
+            ]
+        ]
 
 
 sheHe : Gender -> String
@@ -537,6 +781,38 @@ herHim gender =
             "zer"
 
 
+capitalize : String -> String
+capitalize str =
+    case (uncons str) of
+        Just ( char, str2 ) ->
+            cons (Char.toUpper char) str2
+
+        Nothing ->
+            ""
+
+
+instructionsForTransferToOtherPerson : Person -> Person -> Html msg
+instructionsForTransferToOtherPerson sender receiver =
+    div []
+        [ div [ class [ MyCss.PassToOtherPerson, MyCss.PassToOtherPersonSender ] ]
+            [ text
+                (sender.name
+                    ++ ": Pass this device to "
+                    ++ receiver.name
+                    ++ " or send "
+                    ++ herHim receiver.gender
+                    ++ " the link in the address bar above. Don't hit the 'Back' or 'Next' button after sending the link."
+                )
+            ]
+        , div [ class [ MyCss.PassToOtherPerson ] ]
+            [ text
+                (receiver.name
+                    ++ ": Go ahead and press the 'Next' button."
+                )
+            ]
+        ]
+
+
 viewListOfReasons : List String -> Html msg
 viewListOfReasons reasons =
     ol []
@@ -549,16 +825,16 @@ viewListOfReasons reasons =
 viewNextBackButtons : Int -> Html Msg
 viewNextBackButtons currentStep =
     if currentStep > 1 then
-        div []
-            [ button [ onClick (SetStep (currentStep - 1)) ] [ text "Back" ]
-            , button [ onClick (SetStep (currentStep + 1)) ] [ text "Next" ]
-            , div []
+        div [ class [ MyCss.BackNextButtonGroup ] ]
+            [ button [ onClick (SetStep (currentStep - 1)), class [ MyCss.BackNextButton ] ] [ text "Back" ]
+            , button [ onClick (SetStep (currentStep + 1)), class [ MyCss.BackNextButton ] ] [ text "Next" ]
+            , div [ class [ MyCss.CurrentStep ] ]
                 [ text ("current step: " ++ (toString currentStep))
                 ]
             ]
     else
         div []
-            [ button [ onClick (SetStep (currentStep + 1)) ] [ text "Next" ]
+            [ button [ onClick (SetStep (currentStep + 1)), class [ MyCss.BackNextButton ] ] [ text "Next" ]
             ]
 
 
