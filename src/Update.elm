@@ -63,14 +63,7 @@ update msg model =
             ( { model | partner = updatePerson personMsg model.partner }, Cmd.none )
 
         UrlChange location ->
-            let
-                location2 =
-                    Debug.log "location" location
-
-                parsedUrl =
-                    parseLocation location
-            in
-                ( model, Cmd.none )
+            ( model, Cmd.none )
 
         GetFirebaseKey key ->
             ( { model | firebaseKey = key }, Navigation.modifyUrl key )
@@ -78,12 +71,16 @@ update msg model =
         LoadConversation modelResult ->
             case modelResult of
                 Ok modelFromFirebase ->
-                    ( modelFromFirebase, Cmd.none )
+                    let
+                        debugModel =
+                            (Debug.log "model from Firebase:" modelFromFirebase)
+                    in
+                        ( modelFromFirebase, Cmd.none )
 
                 Err errorMessage ->
                     let
-                        blackhold =
-                            Debug.log errorMessage
+                        blackhole =
+                            Debug.log "error message from loading conversation" errorMessage
                     in
                         ( model, Cmd.none )
 
@@ -224,6 +221,12 @@ sideOfConvToValue sideOfConv =
         , ( "empathy1", Json.Encode.string sideOfConv.empathy1 )
         , ( "empathy2", Json.Encode.string sideOfConv.empathy2 )
         , ( "empathy3", Json.Encode.string sideOfConv.empathy3 )
+        , ( "question1", Json.Encode.string sideOfConv.question1 )
+        , ( "question2", Json.Encode.string sideOfConv.question2 )
+        , ( "question3", Json.Encode.string sideOfConv.question3 )
+        , ( "answer1", Json.Encode.string sideOfConv.answer1 )
+        , ( "answer2", Json.Encode.string sideOfConv.answer2 )
+        , ( "answer3", Json.Encode.string sideOfConv.answer3 )
         ]
 
 

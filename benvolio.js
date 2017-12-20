@@ -15861,7 +15861,55 @@ var _user$project$Update$sideOfConvToValue = function (sideOfConv) {
 										_0: 'empathy3',
 										_1: _elm_lang$core$Json_Encode$string(sideOfConv.empathy3)
 									},
-									_1: {ctor: '[]'}
+									_1: {
+										ctor: '::',
+										_0: {
+											ctor: '_Tuple2',
+											_0: 'question1',
+											_1: _elm_lang$core$Json_Encode$string(sideOfConv.question1)
+										},
+										_1: {
+											ctor: '::',
+											_0: {
+												ctor: '_Tuple2',
+												_0: 'question2',
+												_1: _elm_lang$core$Json_Encode$string(sideOfConv.question2)
+											},
+											_1: {
+												ctor: '::',
+												_0: {
+													ctor: '_Tuple2',
+													_0: 'question3',
+													_1: _elm_lang$core$Json_Encode$string(sideOfConv.question3)
+												},
+												_1: {
+													ctor: '::',
+													_0: {
+														ctor: '_Tuple2',
+														_0: 'answer1',
+														_1: _elm_lang$core$Json_Encode$string(sideOfConv.answer1)
+													},
+													_1: {
+														ctor: '::',
+														_0: {
+															ctor: '_Tuple2',
+															_0: 'answer2',
+															_1: _elm_lang$core$Json_Encode$string(sideOfConv.answer2)
+														},
+														_1: {
+															ctor: '::',
+															_0: {
+																ctor: '_Tuple2',
+																_0: 'answer3',
+																_1: _elm_lang$core$Json_Encode$string(sideOfConv.answer3)
+															},
+															_1: {ctor: '[]'}
+														}
+													}
+												}
+											}
+										}
+									}
 								}
 							}
 						}
@@ -16124,9 +16172,11 @@ var _user$project$Update$update = F2(
 			default:
 				var _p11 = _p7._0;
 				if (_p11.ctor === 'Ok') {
-					return {ctor: '_Tuple2', _0: _p11._0, _1: _elm_lang$core$Platform_Cmd$none};
+					var _p12 = _p11._0;
+					var debugModel = A2(_elm_lang$core$Debug$log, 'model from Firebase:', _p12);
+					return {ctor: '_Tuple2', _0: _p12, _1: _elm_lang$core$Platform_Cmd$none};
 				} else {
-					var blackhold = _elm_lang$core$Debug$log(_p11._0);
+					var blackhole = A2(_elm_lang$core$Debug$log, 'error message from loading conversation', _p11._0);
 					return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
 				}
 		}
@@ -19546,7 +19596,7 @@ var _user$project$Subscriptions$subscriptions = function (model) {
 var _user$project$Main$init = function (location) {
 	var maybeFirebaseKey = A2(
 		_elm_lang$core$Debug$log,
-		'wwww',
+		'parsed firebase key:',
 		_user$project$Update$parseLocation(location));
 	var fetchModelUsingFirebaseKey = function () {
 		var _p0 = maybeFirebaseKey;

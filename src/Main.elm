@@ -22,7 +22,7 @@ init : Navigation.Location -> ( Model, Cmd Msg )
 init location =
     let
         maybeFirebaseKey =
-            (Debug.log "wwww" (parseLocation location))
+            parseLocation location
 
         fetchModelUsingFirebaseKey =
             case maybeFirebaseKey of
