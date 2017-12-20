@@ -16156,27 +16156,24 @@ var _user$project$Update$update = F2(
 					_1: _elm_lang$core$Platform_Cmd$none
 				};
 			case 'UrlChange':
-				var _p9 = _p7._0;
-				var parsedUrl = _user$project$Update$parseLocation(_p9);
-				var location2 = A2(_elm_lang$core$Debug$log, 'location', _p9);
 				return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
 			case 'GetFirebaseKey':
-				var _p10 = _p7._0;
+				var _p9 = _p7._0;
 				return {
 					ctor: '_Tuple2',
 					_0: _elm_lang$core$Native_Utils.update(
 						model,
-						{firebaseKey: _p10}),
-					_1: _elm_lang$navigation$Navigation$modifyUrl(_p10)
+						{firebaseKey: _p9}),
+					_1: _elm_lang$navigation$Navigation$modifyUrl(_p9)
 				};
 			default:
-				var _p11 = _p7._0;
-				if (_p11.ctor === 'Ok') {
-					var _p12 = _p11._0;
-					var debugModel = A2(_elm_lang$core$Debug$log, 'model from Firebase:', _p12);
-					return {ctor: '_Tuple2', _0: _p12, _1: _elm_lang$core$Platform_Cmd$none};
+				var _p10 = _p7._0;
+				if (_p10.ctor === 'Ok') {
+					var _p11 = _p10._0;
+					var debugModel = A2(_elm_lang$core$Debug$log, 'model from Firebase:', _p11);
+					return {ctor: '_Tuple2', _0: _p11, _1: _elm_lang$core$Platform_Cmd$none};
 				} else {
-					var blackhole = A2(_elm_lang$core$Debug$log, 'error message from loading conversation', _p11._0);
+					var blackhole = A2(_elm_lang$core$Debug$log, 'error message from loading conversation', _p10._0);
 					return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
 				}
 		}
@@ -17434,6 +17431,7 @@ var _user$project$View$viewFirstConversationSummary = function (model) {
 };
 var _user$project$View$viewQuestionsPlusText = F2(
 	function (questionAsker, questionAnswerer) {
+		var personUpdateMsg = _elm_lang$core$Native_Utils.eq(questionAsker.role, _user$project$Model$Initiator) ? _user$project$Update$InitiatorUpdate : _user$project$Update$PartnerUpdate;
 		return A2(
 			_elm_lang$html$Html$div,
 			{ctor: '[]'},
@@ -17478,7 +17476,7 @@ var _user$project$View$viewQuestionsPlusText = F2(
 														A2(
 															_elm_lang$core$Basics_ops['++'],
 															_user$project$View$herHim(questionAnswerer.gender),
-															' understand you. Don\'t ask qustions like \"Why are you such an idiot?\"'))))))))),
+															' understand you. Don\'t ask qustions like \"Were you dropped on your head as a baby?\"'))))))))),
 						_1: {ctor: '[]'}
 					}),
 				_1: {
@@ -17513,19 +17511,19 @@ var _user$project$View$viewQuestionsPlusText = F2(
 								ctor: '::',
 								_0: A2(
 									_elm_lang$html$Html$map,
-									_user$project$Update$InitiatorUpdate,
+									personUpdateMsg,
 									_user$project$View$viewPersonQuestion1(questionAsker)),
 								_1: {
 									ctor: '::',
 									_0: A2(
 										_elm_lang$html$Html$map,
-										_user$project$Update$InitiatorUpdate,
+										personUpdateMsg,
 										_user$project$View$viewPersonQuestion2(questionAsker)),
 									_1: {
 										ctor: '::',
 										_0: A2(
 											_elm_lang$html$Html$map,
-											_user$project$Update$InitiatorUpdate,
+											personUpdateMsg,
 											_user$project$View$viewPersonQuestion3(questionAsker)),
 										_1: {ctor: '[]'}
 									}
@@ -18947,20 +18945,40 @@ var _user$project$View$viewStep = function (model) {
 							}),
 						_1: {
 							ctor: '::',
-							_0: _elm_lang$html$Html$text(
-								A2(
-									_elm_lang$core$Basics_ops['++'],
-									'If this looks okay, hand this over to ',
-									A2(
-										_elm_lang$core$Basics_ops['++'],
-										model.partner.name,
+							_0: A2(
+								_elm_lang$html$Html$div,
+								{
+									ctor: '::',
+									_0: _user$project$View$class(
+										{
+											ctor: '::',
+											_0: _user$project$MyCss$PassToOtherPerson,
+											_1: {
+												ctor: '::',
+												_0: _user$project$MyCss$PassToOtherPersonSender,
+												_1: {ctor: '[]'}
+											}
+										}),
+									_1: {ctor: '[]'}
+								},
+								{
+									ctor: '::',
+									_0: _elm_lang$html$Html$text(
 										A2(
 											_elm_lang$core$Basics_ops['++'],
-											' so ',
+											'If this looks okay, hit \"Next\" and hand or send this over to ',
 											A2(
 												_elm_lang$core$Basics_ops['++'],
-												_user$project$View$sheHe(model.partner.gender),
-												' can empathize about your reasons.'))))),
+												model.partner.name,
+												A2(
+													_elm_lang$core$Basics_ops['++'],
+													' so ',
+													A2(
+														_elm_lang$core$Basics_ops['++'],
+														_user$project$View$sheHe(model.partner.gender),
+														' can empathize with your reasons.'))))),
+									_1: {ctor: '[]'}
+								}),
 							_1: {ctor: '[]'}
 						}
 					}
@@ -19072,7 +19090,16 @@ var _user$project$View$viewStep = function (model) {
 												A2(
 													_elm_lang$core$Basics_ops['++'],
 													' viewpoint. Don\'t say things like \"',
-													A2(_elm_lang$core$Basics_ops['++'], model.initiator.name, ' thinks that because he\'s an idiot.\"'))))))),
+													A2(
+														_elm_lang$core$Basics_ops['++'],
+														model.initiator.name,
+														A2(
+															_elm_lang$core$Basics_ops['++'],
+															' thinks that because ',
+															A2(
+																_elm_lang$core$Basics_ops['++'],
+																_user$project$View$sheHe(model.initiator.gender),
+																'\'s an idiot.\"'))))))))),
 							_1: {
 								ctor: '::',
 								_0: A2(
@@ -19138,7 +19165,7 @@ var _user$project$View$viewStep = function (model) {
 							_0: _elm_lang$html$Html$text(
 								A2(
 									_elm_lang$core$Basics_ops['++'],
-									'Click \"next\" to see ',
+									'Click \"Next\" to see ',
 									A2(_elm_lang$core$Basics_ops['++'], model.initiator.name, '\'s empathy for your reasons.'))),
 							_1: {ctor: '[]'}
 						}
@@ -19594,10 +19621,7 @@ var _user$project$Subscriptions$subscriptions = function (model) {
 };
 
 var _user$project$Main$init = function (location) {
-	var maybeFirebaseKey = A2(
-		_elm_lang$core$Debug$log,
-		'parsed firebase key:',
-		_user$project$Update$parseLocation(location));
+	var maybeFirebaseKey = _user$project$Update$parseLocation(location);
 	var fetchModelUsingFirebaseKey = function () {
 		var _p0 = maybeFirebaseKey;
 		if (_p0.ctor === 'Just') {

@@ -262,13 +262,15 @@ viewStep model =
                 , div []
                     [ viewEmpathySummary model Initiator False
                     ]
-                , text
-                    ("If this looks okay, hand this over to "
-                        ++ model.partner.name
-                        ++ " so "
-                        ++ (sheHe model.partner.gender)
-                        ++ " can empathize about your reasons."
-                    )
+                , div [ class [ MyCss.PassToOtherPerson, MyCss.PassToOtherPersonSender ] ]
+                    [ text
+                        ("If this looks okay, hit \"Next\" and hand or send this over to "
+                            ++ model.partner.name
+                            ++ " so "
+                            ++ (sheHe model.partner.gender)
+                            ++ " can empathize with your reasons."
+                        )
+                    ]
                 ]
 
         13 ->
@@ -314,7 +316,9 @@ viewStep model =
                         ++ (herHis model.initiator.gender)
                         ++ " viewpoint. Don't say things like \""
                         ++ model.initiator.name
-                        ++ " thinks that because he's an idiot.\""
+                        ++ " thinks that because "
+                        ++ (sheHe model.initiator.gender)
+                        ++ "'s an idiot.\""
                     )
                 , div []
                     [ Html.map PartnerUpdate (viewPersonEmpathy1 model.partner)
@@ -331,7 +335,7 @@ viewStep model =
             div []
                 [ text ("Here is a summary of your empathy for " ++ model.initiator.name ++ "'s reasons: ")
                 , viewEmpathySummary model Partner False
-                , text ("Click \"next\" to see " ++ model.initiator.name ++ "'s empathy for your reasons.")
+                , text ("Click \"Next\" to see " ++ model.initiator.name ++ "'s empathy for your reasons.")
                 ]
 
         16 ->
@@ -590,29 +594,36 @@ viewFirstConversationSummary model =
 
 viewQuestionsPlusText : Person -> Person -> Html Msg
 viewQuestionsPlusText questionAsker questionAnswerer =
-    div []
-        [ div [ class [ MyCss.QuestionsSection ] ]
-            [ text
-                ("In this section, you can ask "
-                    ++ questionAnswerer.name
-                    ++ " three questions about "
-                    ++ (herHis questionAnswerer.gender)
-                    ++ " stance, reasons, or empathy, or anything eles you think will help you understand "
-                    ++ (herHim questionAnswerer.gender)
-                    ++ " or help "
-                    ++ (herHim questionAnswerer.gender)
-                    ++ " understand you. Don't ask qustions like \"Why are you such an idiot?\""
-                )
+    let
+        personUpdateMsg =
+            if questionAsker.role == Initiator then
+                InitiatorUpdate
+            else
+                PartnerUpdate
+    in
+        div []
+            [ div [ class [ MyCss.QuestionsSection ] ]
+                [ text
+                    ("In this section, you can ask "
+                        ++ questionAnswerer.name
+                        ++ " three questions about "
+                        ++ (herHis questionAnswerer.gender)
+                        ++ " stance, reasons, or empathy, or anything eles you think will help you understand "
+                        ++ (herHim questionAnswerer.gender)
+                        ++ " or help "
+                        ++ (herHim questionAnswerer.gender)
+                        ++ " understand you. Don't ask qustions like \"Were you dropped on your head as a baby?\""
+                    )
+                ]
+            , div [ class [ "questions-prompt" ] ]
+                [ text ("What are three questions you have for " ++ questionAnswerer.name ++ "?")
+                ]
+            , div []
+                [ Html.map personUpdateMsg (viewPersonQuestion1 questionAsker)
+                , Html.map personUpdateMsg (viewPersonQuestion2 questionAsker)
+                , Html.map personUpdateMsg (viewPersonQuestion3 questionAsker)
+                ]
             ]
-        , div [ class [ "questions-prompt" ] ]
-            [ text ("What are three questions you have for " ++ questionAnswerer.name ++ "?")
-            ]
-        , div []
-            [ Html.map InitiatorUpdate (viewPersonQuestion1 questionAsker)
-            , Html.map InitiatorUpdate (viewPersonQuestion2 questionAsker)
-            , Html.map InitiatorUpdate (viewPersonQuestion3 questionAsker)
-            ]
-        ]
 
 
 viewQuestionsSummaryBeforeSend : Person -> Person -> Html Msg
