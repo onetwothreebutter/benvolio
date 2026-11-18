@@ -13,6 +13,7 @@ each on their own phone.
 Requires Node 22 (see `.nvmrc`).
 
 ```sh
+cp .env.example .env.local   # then add SUPABASE_SECRET_KEY
 npm ci
 npm run dev        # http://localhost:3000
 npm test           # unit tests (Vitest)
@@ -34,3 +35,20 @@ partner's writing hidden until both people have submitted a sitting. All writes
 go through the server. `src/lib/db/schema.test.ts` runs the migrations in PGlite
 (Postgres in WebAssembly) and checks these rules, so no database is needed for
 `npm test`.
+
+## Sign-in
+
+Email codes through Supabase Auth. See `docs/auth.md` for the dashboard
+settings (redirect URLs, email template, SMTP) and environment variables.
+
+## Deploying
+
+The app runs on Vercel at `https://benvolio.app`, with functions in `pdx1`
+next to the Supabase database (us-west-2).
+
+1. In Vercel, add the domain `benvolio.app` (and `www.benvolio.app`, redirecting
+   to it), then create the DNS records Vercel lists.
+2. Set the environment variables from `.env.example`. `SUPABASE_SECRET_KEY` is
+   secret; the others are public.
+3. Apply the Supabase dashboard settings in `docs/auth.md`. Email is sent
+   through Resend from `mail.benvolio.app`.

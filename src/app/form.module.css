@@ -1,0 +1,61 @@
+.main {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 3rem 1rem;
+}
+
+.form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.label {
+  font-weight: 600;
+}
+
+.input {
+  font: inherit;
+  font-size: 1.1rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--muted);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--text);
+}
+
+.button {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.7rem 1rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: var(--accent);
+  color: var(--bg);
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.6;
+}
+
+.link {
+  font: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+  justify-self: start;
+}
+
+.hint {
+  color: var(--muted);
+  margin: 0;
+}
+
+.error {
+  color: var(--accent);
+  font-weight: 600;
+  margin: 0;
+}
