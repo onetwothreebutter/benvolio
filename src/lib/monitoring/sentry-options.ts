@@ -8,14 +8,17 @@ type Frame = { filename?: string; abs_path?: string; module?: string };
 const scrubAll = <T>(value: T): T => mapStringsDeep(value, scrubText);
 
 /**
- * Bundled files keep their names and hashes so source maps still match, minus
- * any query string. Anything else (an inline script names the page URL) is
+ * Bundled and installed files keep their names and hashes so source maps and
+ * grouping still work, minus
+ * any query string. Their source lines are our code, not people's writing.
+ * Anything else (an inline script names the page URL) is
  * redacted like any other URL.
  */
 function scrubFrameFile(value: string | undefined): string | undefined {
   if (value === undefined) return value;
   const [path] = value.split(/[?#]/, 1);
-  return path.startsWith("app:///") || path.includes("/_next/") ? path : redactUrl(path);
+  const bundled = /^app:\/\/\/|\/(_next|\.next|node_modules)\//.test(path);
+  return bundled ? path : redactUrl(path);
 }
 
 function scrubFrames(frames: Frame[] | undefined) {
@@ -27,36 +30,31 @@ function scrubFrames(frames: Frame[] | undefined) {
   }));
 }
 
+const keep = (value: unknown) => value;
+const scrubStacktrace = (value: unknown) =>
+  value && typeof value === "object"
+    ? { ...value, frames: scrubFrames((value as { frames?: Frame[] }).frames) }
+    : value;
+
+// Sentry's own ids look like tokens to the scrubber, and Sentry rejects or
+// can't link events without them. Everything else is scrubbed, so a field
+// Sentry adds later is covered by default. (`trace` is contexts.trace: ids
+// only while tracing is off.)
+const SENTRY_ID_KEYS = Object.fromEntries(
+  ["event_id", "release", "dist", "trace", "trace_id", "span_id", "parent_span_id", "sdk", "debug_meta"].map(
+    (key) => [key, keep],
+  ),
+);
+const SPECIAL_KEYS = { ...SENTRY_ID_KEYS, stacktrace: scrubStacktrace };
+
 /**
- * Scrubs the parts of an event that can hold free text: messages, exception
- * values, the request, breadcrumbs, extra data, tags and contexts. Sentry's
- * own ids (event_id, release, trace ids) are left alone, since the scrubber
- * would mistake them for tokens and Sentry rejects events without them.
+ * Scrubs every string in an event (messages, exception values, the
+ * transaction name, the request, breadcrumbs, extra data, tags, user and
+ * contexts) except Sentry's own ids and bundle file names in stack frames.
  * (Local variables are never collected: includeLocalVariables stays unset.)
  */
 export function scrubEvent<T extends ErrorEvent>(event: T): T {
-  const { trace, ...contexts } = event.contexts ?? {};
-  return {
-    ...event,
-    message: event.message && scrubText(event.message),
-    logentry: scrubAll(event.logentry),
-    request: scrubAll(event.request),
-    breadcrumbs: scrubAll(event.breadcrumbs),
-    extra: scrubAll(event.extra),
-    tags: scrubAll(event.tags),
-    contexts: event.contexts && { ...scrubAll(contexts), ...(trace && { trace }) },
-    exception: event.exception && {
-      ...event.exception,
-      values: event.exception.values?.map((value) => ({
-        ...value,
-        value: value.value && scrubText(value.value),
-        stacktrace: value.stacktrace && {
-          ...value.stacktrace,
-          frames: scrubFrames(value.stacktrace.frames),
-        },
-      })),
-    },
-  };
+  return mapStringsDeep(event, scrubText, SPECIAL_KEYS);
 }
 
 export function scrubBreadcrumb(breadcrumb: Breadcrumb): Breadcrumb | null {
