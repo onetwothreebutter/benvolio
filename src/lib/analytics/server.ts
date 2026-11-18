@@ -29,5 +29,10 @@ export function trackServer<E extends AnalyticsEventName>(
   const posthog = getClient();
   if (!posthog) return;
   posthog.capture({ distinctId: personId, event, properties });
-  after(() => posthog.flush());
+  try {
+    after(() => posthog.flush());
+  } catch {
+    // Outside a request (a script or job) there is no after(): flush now.
+    void posthog.flush().catch(() => {});
+  }
 }

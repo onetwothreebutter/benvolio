@@ -1,12 +1,21 @@
 import type * as Sentry from "@sentry/nextjs";
-import { redactUrlsDeep } from "@/lib/analytics/redact-url";
+import { mapStringsDeep, scrubText } from "@/lib/analytics/redact-url";
 
 type Options = NonNullable<Parameters<typeof Sentry.init>[0]>;
 
+// Stack frames and build metadata hold file names and hashes Sentry needs to
+// match source maps. They come from our code, not from people.
+const UNSCRUBBED_KEYS = new Set(["stacktrace", "debug_meta", "sdk"]);
+
+/** Scrubs URLs, emails and tokens from every string in an event or breadcrumb. */
+export function scrub<T>(value: T): T {
+  return mapStringsDeep(value, scrubText, UNSCRUBBED_KEYS);
+}
+
 /**
  * Errors only, no tracing. Sentry's own data collection is turned off for
- * anything that could contain what someone wrote or who they are, and every
- * URL in an event or breadcrumb loses its query string and tokens.
+ * anything that could hold what someone wrote or who they are, console output
+ * is not recorded, and every remaining string is scrubbed before sending.
  * With no DSN set, Sentry sends nothing.
  */
 export const sentryOptions = {
@@ -19,6 +28,7 @@ export const sentryOptions = {
     httpBodies: [],
     urlQueryParams: false,
   },
-  beforeSend: (event) => redactUrlsDeep(event),
-  beforeBreadcrumb: (breadcrumb) => redactUrlsDeep(breadcrumb),
+  beforeSend: (event) => scrub(event),
+  // Console output can contain anything, including what people wrote.
+  beforeBreadcrumb: (breadcrumb) => (breadcrumb.category === "console" ? null : scrub(breadcrumb)),
 } satisfies Options;

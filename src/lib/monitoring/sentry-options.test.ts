@@ -2,6 +2,8 @@ import type { ErrorEvent } from "@sentry/nextjs";
 import { describe, expect, it } from "vitest";
 import { sentryOptions } from "./sentry-options";
 
+const TOKEN = "Xy7k2Lm9QwErTy0UiOp1";
+
 describe("sentryOptions", () => {
   it("turns off collection of personal data", () => {
     expect(sentryOptions.dataCollection).toEqual({
@@ -13,17 +15,37 @@ describe("sentryOptions", () => {
     });
   });
 
-  it("redacts URLs in events and breadcrumbs", () => {
+  it("scrubs URLs, emails and tokens from every part of an event", () => {
     const event = sentryOptions.beforeSend({
       type: undefined,
-      request: { url: "https://benvolio.app/join/Xy7_k2Lm9QwErTy0UiOp?x=1" },
+      message: `Invite ${TOKEN} for jane@example.com not found`,
+      request: { url: `https://benvolio.app/join/${TOKEN}?x=1` },
+      exception: {
+        values: [
+          {
+            value: `Failed to fetch RSC payload for https://benvolio.app/join/${TOKEN}?_rsc=1`,
+            stacktrace: { frames: [{ filename: "app:///_next/static/chunks/a1b2c3d4e5f6a7b8.js" }] },
+          },
+        ],
+      },
     } as ErrorEvent);
+    expect(event.message).toBe("Invite :id for [email] not found");
     expect(event.request?.url).toBe("https://benvolio.app/join/:id");
+    expect(event.exception?.values?.[0].value).toBe(
+      "Failed to fetch RSC payload for https://benvolio.app/join/:id",
+    );
+    // Stack frames are left alone so source maps still match.
+    expect(event.exception?.values?.[0].stacktrace?.frames?.[0].filename).toBe(
+      "app:///_next/static/chunks/a1b2c3d4e5f6a7b8.js",
+    );
+  });
 
+  it("drops console breadcrumbs and scrubs the rest", () => {
+    expect(sentryOptions.beforeBreadcrumb({ category: "console", message: "anything" })).toBeNull();
     const crumb = sentryOptions.beforeBreadcrumb({
       category: "navigation",
-      data: { from: "/", to: "/join/Xy7_k2Lm9QwErTy0UiOp" },
+      data: { from: "/", to: `/join/${TOKEN}` },
     });
-    expect(crumb.data).toEqual({ from: "/", to: "/join/:id" });
+    expect(crumb?.data).toEqual({ from: "/", to: "/join/:id" });
   });
 });

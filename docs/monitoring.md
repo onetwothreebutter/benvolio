@@ -10,9 +10,12 @@ Benvolio records what happens in a conversation, never what anyone writes in it.
 - Every URL-looking value is stripped of query strings, fragments and token-like path segments
   before they are sent (`src/lib/analytics/redact-url.ts`), so invite links
   never reach PostHog or Sentry.
-- PostHog autocapture and session replay are off. Sentry session replay is not
+- PostHog autocapture, session replay, dead clicks, heatmaps, exception capture,
+  console logs, surveys and feature flags are all switched off in code, so a
+  setting in the PostHog project cannot turn them on. Sentry session replay is not
   installed. Sentry error reports have request bodies, cookies, headers and
-  user details turned off, and breadcrumb URLs redacted too (`src/lib/monitoring/sentry-options.ts`).
+  user details turned off, console output is not recorded, and URLs, emails
+  and tokens are scrubbed from every remaining string, including error messages (`src/lib/monitoring/sentry-options.ts`).
 - People are identified by their opaque id, never their email.
 
 ## Tools
@@ -25,15 +28,16 @@ Benvolio records what happens in a conversation, never what anyone writes in it.
 | Postmark webhooks | Bounces and spam complaints, recorded as PostHog events (added with email) | later PR |
 | Uptime monitor | The site being reachable | external, see below |
 
-Both PostHog and Sentry are proxied through the app's own domain (`/ingest` and
-`/monitoring`) so ad blockers don't drop them. Without their environment
+Both PostHog and Sentry are proxied through the app's own domain (`/ingest`,
+and Sentry's managed tunnel) so ad blockers don't drop them. Without their environment
 variables (see `.env.example`), both are switched off.
 
 ## Setting up the accounts
 
 1. **PostHog:** create a project and copy its project API key into
    `NEXT_PUBLIC_POSTHOG_KEY` in Vercel. For an EU project, also set the two EU
-   host variables in `.env.example`.
+   host variables in `.env.example` (they are read at build time). In Project
+   settings, turn on "Discard client IP data".
 2. **Sentry:** create a Next.js project. Put its DSN in `NEXT_PUBLIC_SENTRY_DSN`,
    and set `SENTRY_ORG`, `SENTRY_PROJECT` and `SENTRY_AUTH_TOKEN` so builds
    upload source maps. Add an alert rule that emails on new issues.

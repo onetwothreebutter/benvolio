@@ -32,13 +32,25 @@ function posthog(): Promise<PostHog | null> {
       person_profiles: "identified_only",
       // Only explicit, typed events: autocapture could pick up text on screen.
       autocapture: false,
-      // Overrides any replay setting in the PostHog project: screens show what people wrote.
+      // Everything below is set here so a toggle in the PostHog project settings
+      // can never switch on something that could record what people wrote.
       disable_session_recording: true,
+      capture_dead_clicks: false,
+      capture_heatmaps: false,
+      capture_exceptions: false,
+      logs: { captureConsoleLogs: false },
+      disable_surveys: true,
+      disable_product_tours: true,
+      disable_conversations: true,
+      disable_web_experiments: true,
+      // Feature-flag requests send the first URL a person visited, which can be
+      // an invite link, and they bypass before_send. Off until flags are needed.
+      advanced_disable_flags: true,
       capture_performance: { web_vitals: true, network_timing: false },
       before_send: redactCapture,
     });
     return client;
-  })();
+  })().catch(() => null);
   return loading;
 }
 

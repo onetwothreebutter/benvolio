@@ -18,7 +18,5 @@ const nextConfig: NextConfig = {
 export default withSentryConfig(nextConfig, {
   silent: !process.env.CI,
   widenClientFileUpload: true,
-  // Sends Sentry reports through our domain for the same reason as PostHog.
-  tunnelRoute: "/monitoring",
   bundleSizeOptimizations: { excludeTracing: true, excludeDebugStatements: true },
 });
