@@ -11,6 +11,8 @@ const redirect = vi.hoisted(() =>
   }),
 );
 vi.mock("next/navigation", () => ({ redirect }));
+const captureMessage = vi.hoisted(() => vi.fn());
+vi.mock("@sentry/nextjs", () => ({ captureMessage }));
 
 const { signIn } = await import("./actions");
 
@@ -47,6 +49,14 @@ describe("signIn", () => {
     const state = await signIn({ step: "email" }, form({ email: "a@b.co" }));
     expect(state).toMatchObject({ step: "email", email: "a@b.co", error: expect.stringContaining("wait") });
     expect(rememberNext).not.toHaveBeenCalled();
+    expect(captureMessage).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed send to Sentry with Supabase's reason", async () => {
+    auth.signInWithOtp.mockResolvedValue({ error: { status: 500, message: "Error sending magic link email" } });
+    const state = await signIn({ step: "email" }, form({ email: "a@b.co" }));
+    expect(state).toMatchObject({ step: "email", email: "a@b.co", error: expect.stringContaining("couldn't send") });
+    expect(captureMessage).toHaveBeenCalledWith("Sign-in email failed: 500 Error sending magic link email", "error");
   });
 
   it("signs in with the code and goes to the next page", async () => {
