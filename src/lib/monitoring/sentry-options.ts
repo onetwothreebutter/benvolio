@@ -39,7 +39,9 @@ const scrubStacktrace = (value: unknown) =>
 // Sentry's own ids look like tokens to the scrubber, and Sentry rejects or
 // can't link events without them. Everything else is scrubbed, so a field
 // Sentry adds later is covered by default. (`trace` is contexts.trace: ids
-// only while tracing is off.)
+// only while tracing is off; scrub its data if tracing is ever enabled.) These
+// keys are skipped at any depth, so our own code must not use them as names in
+// extra, tags or contexts.
 const SENTRY_ID_KEYS = Object.fromEntries(
   ["event_id", "release", "dist", "trace", "trace_id", "span_id", "parent_span_id", "sdk", "debug_meta"].map(
     (key) => [key, keep],
