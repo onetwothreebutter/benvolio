@@ -67,3 +67,12 @@ sign-in form from emailing strangers; if that becomes a problem, add CAPTCHA
 | `NEXT_PUBLIC_SUPABASE_URL` | Vercel, `.env.local` | No |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Vercel, `.env.local` | No |
 | `SUPABASE_SECRET_KEY` | Vercel (Production and Preview) | Yes |
+| `SITE_URL` | Vercel (Production): `https://benvolio.app` | No |
+
+## Invites
+
+An invite is a link with a random token; the database keeps only its hash.
+Anyone who opens the link and signs in can join, whatever email they use: the
+email typed when starting is only where invite emails will go. The link works once
+and expires after 30 days. Until the partner joins, the initiator can make a
+new link from the Benvolio's page, which replaces the old one.
