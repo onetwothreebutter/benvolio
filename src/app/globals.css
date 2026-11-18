@@ -1,24 +1,18 @@
+/* --bg is mirrored in viewport.themeColor in layout.tsx. */
 :root {
   --bg: #f7f1e8;
-  --surface: #fffaf3;
   --text: #2b2420;
   --muted: #6b5f57;
   --accent: #b5532f;
-  --accent-text: #ffffff;
-  --border: #e4d9cc;
-  --radius: 14px;
   --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #1f1a17;
-    --surface: #2a2420;
     --text: #f3ebe1;
     --muted: #b7a99c;
     --accent: #e08a62;
-    --accent-text: #1f1a17;
-    --border: #3d342e;
   }
 }
 
@@ -26,13 +20,8 @@
   box-sizing: border-box;
 }
 
-html,
 body {
   margin: 0;
-  padding: 0;
-}
-
-body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);

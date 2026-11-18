@@ -1,16 +1,18 @@
 import type { Metadata, Viewport } from "next";
+import { DESCRIPTION, PRODUCT_NAME } from "@/lib/copy";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Benvolio",
-  description:
-    "A structured conversation that helps two people with different opinions understand each other and find common ground.",
+  title: PRODUCT_NAME,
+  description: DESCRIPTION,
 };
 
+// Keep in step with --bg in globals.css.
 export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  themeColor: "#f7f1e8",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f1e8" },
+    { media: "(prefers-color-scheme: dark)", color: "#1f1a17" },
+  ],
 };
 
 export default function RootLayout({

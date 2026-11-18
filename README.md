@@ -10,7 +10,7 @@ each on their own phone.
 
 ## Development
 
-Requires Node 20 or later.
+Requires Node 22 (see `.nvmrc`).
 
 ```sh
 npm install
