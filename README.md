@@ -13,7 +13,7 @@ each on their own phone.
 Requires Node 22 (see `.nvmrc`).
 
 ```sh
-npm install
+npm ci
 npm run dev        # http://localhost:3000
 npm test           # unit tests (Vitest)
 npm run lint
