@@ -13,12 +13,14 @@ import {
   validateSubmission,
   visibleSubmissions,
   type Conversation,
+  type Items,
   type Role,
   type Submission,
+  type Tags,
 } from "./model";
 
-const three = (prefix: string) => [`${prefix} 1`, `${prefix} 2`, `${prefix} 3`] as [string, string, string];
-const noTags = [[], [], []] as [string[], string[], string[]];
+const three = (prefix: string): Items => [`${prefix} 1`, `${prefix} 2`, `${prefix} 3`];
+const noTags: Tags = [[], [], []];
 
 /** A valid submission for each sitting. */
 function sittingFor(sitting: number, who: string): Submission {
@@ -149,7 +151,7 @@ describe("validateSubmission", () => {
     expect(validateSubmission(sitting, sittingFor(sitting, "x"))).toBeNull();
   });
 
-  it.each<[string, number, Submission, string]>([
+  it.each<[string, number, Submission, keyof Submission]>([
     ["a missing stance", 0, { write: three("r") }, "stance"],
     ["a blank reason", 0, { stance: "yes", write: ["a", "  ", "c"] }, "write"],
     ["two reasons", 0, { stance: "yes", write: ["a", "b"] as never }, "write"],

@@ -1,4 +1,4 @@
-import { ITEMS_PER_ROUND, ROUNDS } from "./rounds";
+import { ITEMS_PER_ROUND, ROUNDS, type ResponseKind } from "./rounds";
 
 /**
  * The turn-taking rules of a Benvolio, as pure functions over plain data.
@@ -11,20 +11,25 @@ import { ITEMS_PER_ROUND, ROUNDS } from "./rounds";
  * their own.
  */
 
-export type Role = "initiator" | "recipient";
-export const ROLES: readonly Role[] = ["initiator", "recipient"];
+const ROLES = ["initiator", "recipient"] as const;
+export type Role = (typeof ROLES)[number];
 
-export const LAST_SITTING = ROUNDS.length; // 5
-export const SITTINGS = LAST_SITTING + 1; // 6
+const LAST_SITTING = ROUNDS.length;
+const SITTINGS = LAST_SITTING + 1;
 
 export type Items = [string, string, string];
 export type Tags = [string[], string[], string[]];
 
 export type Response =
+  /** Rewrite each item in your own words. */
   | { kind: "rephrase"; texts: Items }
+  /** Answer each item, optionally tagging how it made you feel. */
   | { kind: "answer"; texts: Items; tags: Tags }
+  /** Optionally tag each item with how it made you feel. */
   | { kind: "react"; tags: Tags }
+  /** Mark each item agree or disagree, optionally with tags. */
   | { kind: "agree"; agree: [boolean, boolean, boolean]; tags: Tags }
+  /** Rank the items 1 to 3, 1 being the one you like most. */
   | { kind: "rank"; ranks: [number, number, number] };
 
 export type Submission = {
@@ -49,17 +54,17 @@ export type Conversation = {
   submissions: Partial<Record<Role, Submission>>[];
 };
 
-export function partnerOf(role: Role): Role {
+function partnerOf(role: Role): Role {
   return role === "initiator" ? "recipient" : "initiator";
 }
 
 /** The round whose items a sitting writes, if any. */
-export function roundWrittenIn(sitting: number) {
+function roundWrittenIn(sitting: number) {
   return sitting < LAST_SITTING ? ROUNDS[sitting] : undefined;
 }
 
 /** The round a sitting responds to, if any. */
-export function roundRespondedIn(sitting: number) {
+function roundRespondedIn(sitting: number) {
   return sitting > 0 ? ROUNDS[sitting - 1] : undefined;
 }
 
@@ -146,7 +151,7 @@ export function decideQuestion(c: Conversation, accept: boolean): Conversation {
 
 const TAG = /^[a-z0-9_]{1,30}$/;
 const MAX_TAGS_PER_ITEM = 3;
-export const MAX_ITEM_LENGTH = 2000;
+const MAX_ITEM_LENGTH = 2000;
 
 function isText(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0 && value.length <= MAX_ITEM_LENGTH;
@@ -169,7 +174,7 @@ function isTags(value: unknown): value is Tags {
   );
 }
 
-function isResponse(value: Response | undefined, kind: string): boolean {
+function isResponse(value: Response | undefined, kind: ResponseKind): boolean {
   if (!value || value.kind !== kind) return false;
   switch (value.kind) {
     case "rephrase":
@@ -188,14 +193,15 @@ function isResponse(value: Response | undefined, kind: string): boolean {
     case "rank":
       return (
         Array.isArray(value.ranks) &&
-        value.ranks.every(Number.isInteger) &&
-        [...value.ranks].sort().join(",") === "1,2,3"
+        value.ranks.length === ITEMS_PER_ROUND &&
+        value.ranks.every((r) => Number.isInteger(r) && r >= 1 && r <= ITEMS_PER_ROUND) &&
+        new Set(value.ranks).size === ITEMS_PER_ROUND
       );
   }
 }
 
 /** Checks a submission has exactly the parts its sitting needs, all filled in. */
-export function validateSubmission(sitting: number, s: Submission): string | null {
+export function validateSubmission(sitting: number, s: Submission): keyof Submission | null {
   const writes = roundWrittenIn(sitting);
   const responds = roundRespondedIn(sitting);
   if (sitting === 0 ? !isText(s.stance) : s.stance !== undefined) return "stance";

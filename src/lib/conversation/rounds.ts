@@ -5,22 +5,14 @@
  * a different round means editing this file, not the screens.
  */
 
+import type { Response } from "./model";
+
 export const ITEMS_PER_ROUND = 3;
 
-export type ResponseKind =
-  /** Rewrite each item in your own words. */
-  | "rephrase"
-  /** Write an answer to each item, optionally tagging how it made you feel. */
-  | "answer"
-  /** Optionally tag each item with how it made you feel. */
-  | "react"
-  /** Mark each item agree or disagree, optionally with tags. */
-  | "agree"
-  /** Rank the three items 1 to 3, 1 being the one you like most. */
-  | "rank";
+export type ResponseKind = Response["kind"];
 
+/** A round's number is its position in ROUNDS plus one. */
 export type Round = {
-  number: 1 | 2 | 3 | 4 | 5;
   title: string;
   write: {
     prompt: string;
@@ -36,7 +28,6 @@ export type Round = {
 
 export const ROUNDS: readonly Round[] = [
   {
-    number: 1,
     title: "Reasons",
     write: {
       prompt: "What are three reasons you hold your view?",
@@ -50,7 +41,6 @@ export const ROUNDS: readonly Round[] = [
     },
   },
   {
-    number: 2,
     title: "Questions",
     write: {
       prompt: "What are three questions you have for your partner?",
@@ -64,7 +54,6 @@ export const ROUNDS: readonly Round[] = [
     },
   },
   {
-    number: 3,
     title: "Sharing",
     write: {
       prompt: "What are three things you'd like your partner to know?",
@@ -78,7 +67,6 @@ export const ROUNDS: readonly Round[] = [
     },
   },
   {
-    number: 4,
     title: "Accord",
     write: {
       prompt: "What are three things you think you both agree on?",
@@ -91,7 +79,6 @@ export const ROUNDS: readonly Round[] = [
     },
   },
   {
-    number: 5,
     title: "Compromise",
     write: {
       prompt: "What are three compromises you could live with?",
