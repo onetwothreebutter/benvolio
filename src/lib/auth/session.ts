@@ -17,16 +17,16 @@ export const getSignedIn = cache(async (): Promise<SignedIn | null> => {
 });
 
 /** The signed-in person's profile, or null if they haven't told us their name yet. */
-export async function getProfile(userId: string): Promise<{ firstName: string } | null> {
+export const getProfile = cache(async (userId: string): Promise<{ firstName: string } | null> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("people")
     .select("first_name")
     .eq("id", userId)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw new Error(`Loading a profile failed: ${error.message}`);
   return data && { firstName: data.first_name as string };
-}
+});
 
 /** For pages that need an account: sends anyone signed out to sign in, then back to `here`. */
 export async function requireSignedIn(here: string): Promise<SignedIn> {

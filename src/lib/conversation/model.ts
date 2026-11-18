@@ -62,14 +62,14 @@ export type Conversation = {
 
 export class TurnError extends Error {}
 
-function partnerOf(role: Role): Role {
+export function partnerOf(role: Role): Role {
   return role === "initiator" ? "recipient" : "initiator";
 }
 
 export const MAX_QUESTION_LENGTH = 300;
 const MAX_ITEM_LENGTH = 2000;
 
-function cleanQuestion(value: unknown): string {
+export function cleanQuestion(value: unknown): string {
   const text = cleanText(value, MAX_QUESTION_LENGTH);
   if (text === null) throw new TurnError("Invalid question");
   return text;
@@ -146,17 +146,23 @@ export function inviteView(c: Conversation) {
   return { question: c.question.text };
 }
 
+/**
+ * The recipient's new wording for the question, or undefined if they kept it:
+ * blank, or the same but for case and spacing. Throws TurnError if invalid.
+ */
+export function proposedWording(current: string, input?: unknown): string | undefined {
+  if (input === undefined || (typeof input === "string" && input.trim() === "")) return undefined;
+  const proposed = cleanQuestion(input);
+  return sameWording(proposed, current) ? undefined : proposed;
+}
+
 export function join(c: Conversation, proposedQuestion?: string): Conversation {
   if (c.recipientJoined) throw new TurnError("Already joined");
-  // A blank proposal means the recipient kept the wording as sent.
-  const blank = typeof proposedQuestion === "string" && proposedQuestion.trim() === "";
-  const proposed =
-    proposedQuestion === undefined || blank ? undefined : cleanQuestion(proposedQuestion);
+  const proposed = proposedWording(c.question.text, proposedQuestion);
   return {
     ...c,
     recipientJoined: true,
-    question:
-      proposed && !sameWording(proposed, c.question.text) ? { ...c.question, proposed } : c.question,
+    question: proposed ? { ...c.question, proposed } : c.question,
   };
 }
 

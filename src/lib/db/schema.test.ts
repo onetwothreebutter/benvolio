@@ -300,3 +300,113 @@ describe("agreement with the turn-taking model", () => {
     c = await sit(c, 0, "initiator");
   });
 });
+
+describe("starting and joining", () => {
+  const start = (initiator = JANE, hash = "hash-1") =>
+    asService(
+      "select public.start_benvolio($1, 'Cats or dogs?', 'Rhonda', 'rhonda@example.com', $2) as id",
+      [initiator, hash],
+    ).then((r) => (r.rows[0] as { id: string }).id);
+  const joinAs = (person: string, hash = "hash-1", proposed: string | null = null) =>
+    asService("select public.join_benvolio($1, $2, $3) as id", [hash, person, proposed]).then(
+      (r) => (r.rows[0] as { id: string }).id,
+    );
+
+  it("starts a Benvolio with an invite, and joining uses the invite up", async () => {
+    const id = await start();
+    expect(
+      (
+        await as(
+          JANE,
+          `select role, first_name, person_id from public.participants where benvolio_id = '${id}' order by role`,
+        )
+      ).rows,
+    ).toEqual([
+      { role: "initiator", first_name: "Jane", person_id: JANE },
+      { role: "recipient", first_name: "Rhonda", person_id: null },
+    ]);
+    // Rhonda signs up as "Ronnie": her own name replaces the one Jane typed.
+    await asService("update public.people set first_name = 'Ronnie' where id = $1", [RHONDA]);
+    expect(await joinAs(RHONDA)).toBe(id);
+    expect(
+      (
+        await as(
+          RHONDA,
+          `select first_name from public.participants where benvolio_id = '${id}' and role = 'recipient'`,
+        )
+      ).rows,
+    ).toEqual([{ first_name: "Ronnie" }]);
+    expect((await asService("select count(*)::int as n from public.invites")).rows).toEqual([
+      { n: 0 },
+    ]);
+    await expect(joinAs(STRANGER)).rejects.toThrow("invite_not_found");
+  });
+
+  it("keeps new wording pending for the initiator", async () => {
+    const id = await start();
+    await joinAs(RHONDA, "hash-1", "Cats, dogs or neither?");
+    expect(
+      (
+        await as(
+          JANE,
+          `select question, proposed_question from public.benvolios where id = '${id}'`,
+        )
+      ).rows,
+    ).toEqual([{ question: "Cats or dogs?", proposed_question: "Cats, dogs or neither?" }]);
+  });
+
+  it("refuses an expired invite, your own invite, and anyone without a profile", async () => {
+    await start(JANE, "old");
+    await asService(
+      "update public.invites set expires_at = now() - interval '1 minute' where token_hash = 'old'",
+    );
+    await expect(joinAs(RHONDA, "old")).rejects.toThrow("invite_not_found");
+
+    await start();
+    await expect(joinAs(JANE)).rejects.toMatchObject({ code: "BVOWN" });
+    await db.query(
+      `insert into auth.users (id, email) values ('00000000-0000-4000-8000-00000000000d', 'new@example.com')`,
+    );
+    await expect(joinAs("00000000-0000-4000-8000-00000000000d")).rejects.toThrow("no_profile");
+    await expect(start("00000000-0000-4000-8000-00000000000d", "hash-2")).rejects.toThrow(
+      "no_profile",
+    );
+    expect(
+      (
+        await asService(
+          "select count(*)::int as n from public.benvolios where question = 'Cats or dogs?'",
+        )
+      ).rows,
+    ).toEqual([{ n: 2 }]);
+  });
+
+  it("lets only the initiator renew an invite, and only before anyone joins", async () => {
+    const id = await start();
+    const renew = (person: string, hash: string) =>
+      asService("select public.renew_invite($1, $2, $3) as ok", [id, person, hash]).then(
+        (r) => (r.rows[0] as { ok: boolean }).ok,
+      );
+    await asService("update public.invites set expires_at = now() - interval '1 minute'");
+    expect(await renew(RHONDA, "hash-x")).toBe(false);
+    expect(await renew(JANE, "hash-2")).toBe(true);
+    await expect(joinAs(RHONDA, "hash-1")).rejects.toThrow("invite_not_found");
+    expect(await joinAs(RHONDA, "hash-2")).toBe(id);
+    expect(await renew(JANE, "hash-3")).toBe(false);
+  });
+
+  it("can only be called by the server", async () => {
+    const callable = await db.query<{ fn: string; ok: boolean }>(
+      `select r as fn, has_function_privilege(r, f, 'execute') as ok
+       from unnest(array['anon', 'authenticated', 'service_role']) r,
+            unnest(array['public.start_benvolio(uuid, text, text, text, text, public.benvolio_pace)',
+                         'public.join_benvolio(text, uuid, text)',
+                         'public.renew_invite(uuid, uuid, text)']) f
+       order by 1`,
+    );
+    const allowed = (role: string) =>
+      callable.rows.filter((row) => row.fn === role).map((row) => row.ok);
+    expect(allowed("anon")).toEqual([false, false, false]);
+    expect(allowed("authenticated")).toEqual([false, false, false]);
+    expect(allowed("service_role")).toEqual([true, true, true]);
+  });
+});
