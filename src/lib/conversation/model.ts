@@ -1,3 +1,4 @@
+import { cleanText } from "@/lib/text";
 import { ITEMS_PER_ROUND, ROUNDS, type ResponseKind } from "./rounds";
 
 /**
@@ -67,12 +68,6 @@ function partnerOf(role: Role): Role {
 
 export const MAX_QUESTION_LENGTH = 300;
 const MAX_ITEM_LENGTH = 2000;
-
-function cleanText(value: unknown, max: number): string | null {
-  if (typeof value !== "string") return null;
-  const text = value.trim();
-  return text.length > 0 && text.length <= max ? text : null;
-}
 
 function cleanQuestion(value: unknown): string {
   const text = cleanText(value, MAX_QUESTION_LENGTH);

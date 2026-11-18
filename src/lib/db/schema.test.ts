@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { MAX_FIRST_NAME_LENGTH } from "@/lib/people/first-name";
 import {
   decideQuestion,
   join as joinConversation,
@@ -181,6 +182,13 @@ describe("constraints", () => {
       asService("update public.benvolios set question = $1 where id = $2", ["q".repeat(n), B]);
     await update(MAX_QUESTION_LENGTH);
     await expect(update(MAX_QUESTION_LENGTH + 1)).rejects.toThrow(/check constraint/);
+  });
+
+  it("allows first names up to the app's length limit", async () => {
+    const update = (n: number) =>
+      asService("update public.people set first_name = $1 where id = $2", ["n".repeat(n), JANE]);
+    await update(MAX_FIRST_NAME_LENGTH);
+    await expect(update(MAX_FIRST_NAME_LENGTH + 1)).rejects.toThrow(/check constraint/);
   });
 
   it("requires the initiator to have an account", async () => {
