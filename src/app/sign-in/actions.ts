@@ -1,5 +1,6 @@
 "use server";
 
+import * as Sentry from "@sentry/nextjs";
 import { redirect } from "next/navigation";
 import { normalizeEmail } from "@/lib/auth/email";
 import { rememberNext, takeNext } from "@/lib/auth/next-cookie";
@@ -33,6 +34,9 @@ async function sendCode(form: FormData, next: string): Promise<SignInState> {
   const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
   if (error) {
     const tooMany = error.status === 429;
+    // Supabase's message names the cause (SMTP refused, template error) and
+    // never includes the address, so it is safe to report.
+    if (!tooMany) Sentry.captureMessage(`Sign-in email failed: ${error.status} ${error.message}`, "error");
     return {
       step: "email",
       email,
