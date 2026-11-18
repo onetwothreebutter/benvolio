@@ -20,6 +20,7 @@
     "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
     "@eslint/eslintrc": "^3",
     "@sentry/core": "^11.14.0",
     "@sentry/node": "^11.14.0",

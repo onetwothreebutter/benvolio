@@ -23,4 +23,14 @@ npm run typecheck
 ## Repository layout
 
 - `src/` – the Next.js app
+- `supabase/` – database migrations
 - `legacy/elm-prototype-2017/` – the earlier Elm prototype, kept for reference
+
+## Database
+
+The schema is in `supabase/migrations/`, applied with the Supabase CLI
+(`supabase db push`). Browsers can only read, and row-level security keeps a
+partner's writing hidden until both people have submitted a sitting. All writes
+go through the server. `src/lib/db/schema.test.ts` runs the migrations in PGlite
+(Postgres in WebAssembly) and checks these rules, so no database is needed for
+`npm test`.
