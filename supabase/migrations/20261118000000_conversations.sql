@@ -23,30 +23,27 @@ create table public.benvolios (
   -- New wording the recipient suggested, waiting for the initiator.
   proposed_question text check (char_length(proposed_question) between 1 and 300),
   pace public.benvolio_pace not null default 'daily',
-  created_at timestamptz not null default now(),
-  paused_at timestamptz,
-  finished_at timestamptz
+  created_at timestamptz not null default now()
 );
 
 create table public.participants (
   benvolio_id uuid not null references public.benvolios (id) on delete cascade,
   role public.participant_role not null,
-  -- Null for the recipient until they accept the invite.
+  -- Null for the recipient until they accept the invite: that is what "joined" means.
   person_id uuid references public.people (id) on delete set null,
+  -- Known before the recipient has an account, from the invite.
   first_name text not null check (char_length(first_name) between 1 and 60),
-  joined_at timestamptz,
   primary key (benvolio_id, role)
 );
-create unique index participants_person_once on public.participants (benvolio_id, person_id);
-create index participants_person on public.participants (person_id);
+-- Serves "my role in this Benvolio" and "my Benvolios".
+create unique index participants_person on public.participants (person_id, benvolio_id);
 
 -- The raw invite token is only ever in the invite email; we keep its hash.
 create table public.invites (
   benvolio_id uuid primary key references public.benvolios (id) on delete cascade,
   token_hash text not null unique,
   email text not null,
-  created_at timestamptz not null default now(),
-  accepted_at timestamptz
+  created_at timestamptz not null default now()
 );
 
 create table public.submissions (
@@ -59,6 +56,9 @@ create table public.submissions (
   primary key (benvolio_id, sitting, role),
   foreign key (benvolio_id, role) references public.participants (benvolio_id, role) on delete cascade
 );
+
+-- A Benvolio is finished once both people have submitted sitting 5, so that is
+-- derived from submissions rather than stored.
 
 -- Every email sent, so reminders never double up.
 create table public.notifications (
@@ -83,41 +83,55 @@ revoke all on public.people, public.benvolios, public.participants, public.invit
   public.submissions, public.notifications from anon, authenticated;
 grant select on public.people, public.benvolios, public.participants, public.submissions
   to authenticated;
+grant all on public.people, public.benvolios, public.participants, public.invites,
+  public.submissions, public.notifications to service_role;
 
--- The signed-in person's role in a Benvolio, or null if they are not in it.
-create function public.my_role(b uuid) returns public.participant_role
+-- The Benvolios the signed-in person is in. Used as `in (select ...)` so it runs
+-- once per query, not once per row.
+create function public.my_benvolio_ids() returns setof uuid
 language sql stable security definer set search_path = '' as $$
-  select role from public.participants where benvolio_id = b and person_id = auth.uid()
+  select benvolio_id from public.participants where person_id = (select auth.uid())
 $$;
 
--- True once both people have submitted a sitting. The opening (sitting 0)
--- also waits while new wording for the question is pending.
-create function public.is_revealed(b uuid, s smallint) returns boolean
+-- Whether the signed-in person may read a submission: always their own, and
+-- their partner's once they have submitted that sitting too. This mirrors
+-- isRevealed in src/lib/conversation/model.ts, which also holds the opening
+-- while new wording is pending; the server never lets that state arise (the
+-- recipient waits to write until the wording is settled), so it isn't repeated
+-- here. src/lib/db/schema.test.ts checks the two agree.
+create function public.can_read_submission(b uuid, s smallint, r public.participant_role)
+returns boolean
 language sql stable security definer set search_path = '' as $$
-  select (select count(*) from public.submissions where benvolio_id = b and sitting = s) = 2
-    and (s > 0 or (select proposed_question is null from public.benvolios where id = b))
+  select exists (
+    select 1 from public.participants me
+    where me.benvolio_id = b and me.person_id = (select auth.uid())
+      and (
+        me.role = r
+        or exists (
+          select 1 from public.submissions mine
+          where mine.benvolio_id = b and mine.sitting = s and mine.role = me.role
+        )
+      )
+  )
 $$;
 
-revoke all on function public.my_role(uuid), public.is_revealed(uuid, smallint) from public, anon;
-grant execute on function public.my_role(uuid), public.is_revealed(uuid, smallint) to authenticated;
+revoke all on function public.my_benvolio_ids(), public.can_read_submission(uuid, smallint, public.participant_role)
+  from public, anon;
+grant execute on function public.my_benvolio_ids(), public.can_read_submission(uuid, smallint, public.participant_role)
+  to authenticated;
 
 create policy "Read Benvolios you are in" on public.benvolios
-  for select to authenticated using (public.my_role(id) is not null);
+  for select to authenticated using (id in (select public.my_benvolio_ids()));
 
+-- Partners' first names come from here.
 create policy "Read the people in your Benvolios" on public.participants
-  for select to authenticated using (public.my_role(benvolio_id) is not null);
+  for select to authenticated using (benvolio_id in (select public.my_benvolio_ids()));
 
-create policy "Read yourself and your partners" on public.people
-  for select to authenticated using (
-    id = auth.uid()
-    or exists (
-      select 1 from public.participants p
-      where p.person_id = people.id and public.my_role(p.benvolio_id) is not null
-    )
-  );
+create policy "Read yourself" on public.people
+  for select to authenticated using (id = (select auth.uid()));
 
-create policy "Read your own writing, and your partner's once revealed" on public.submissions
+create policy "Read your own writing, and your partner's once you have written yours" on public.submissions
   for select to authenticated using (
-    role = public.my_role(benvolio_id)
-    or (public.my_role(benvolio_id) is not null and public.is_revealed(benvolio_id, sitting))
+    benvolio_id in (select public.my_benvolio_ids())
+    and public.can_read_submission(benvolio_id, sitting, role)
   );

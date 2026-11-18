@@ -19,7 +19,7 @@ import { ITEMS_PER_ROUND, ROUNDS, type ResponseKind } from "./rounds";
 const ROLES = ["initiator", "recipient"] as const;
 export type Role = (typeof ROLES)[number];
 
-const LAST_SITTING = ROUNDS.length;
+export const LAST_SITTING = ROUNDS.length;
 const SITTINGS = LAST_SITTING + 1;
 
 export type Items = [string, string, string];
@@ -65,7 +65,7 @@ function partnerOf(role: Role): Role {
   return role === "initiator" ? "recipient" : "initiator";
 }
 
-const MAX_QUESTION_LENGTH = 300;
+export const MAX_QUESTION_LENGTH = 300;
 const MAX_ITEM_LENGTH = 2000;
 
 function cleanText(value: unknown, max: number): string | null {

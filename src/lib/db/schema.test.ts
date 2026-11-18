@@ -3,6 +3,16 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  join as joinConversation,
+  LAST_SITTING,
+  MAX_QUESTION_LENGTH,
+  startConversation,
+  submit as submitTurn,
+  visibleSubmissions as modelVisible,
+  type Conversation,
+  type Role,
+} from "@/lib/conversation/model";
 
 const root = join(__dirname, "../../../supabase");
 const migrations = readdirSync(join(root, "migrations"))
@@ -16,14 +26,18 @@ const B = "00000000-0000-4000-8000-0000000000b1";
 
 let db: PGlite;
 
+/** Runs a query as the server does, with the service role. */
 async function asService(sql: string, params: unknown[] = []) {
-  await db.exec("reset role");
-  return db.query(sql, params);
+  await db.exec("set role service_role");
+  try {
+    return await db.query(sql, params);
+  } finally {
+    await db.exec("reset role");
+  }
 }
 
 /** Runs a query as a signed-in person, the way the browser would. */
 async function as(person: string | null, sql: string) {
-  await db.exec("reset role");
   await db.query("select set_config('request.jwt.claims', $1, false)", [
     JSON.stringify(person ? { sub: person } : {}),
   ]);
@@ -35,11 +49,16 @@ async function as(person: string | null, sql: string) {
   }
 }
 
-async function submit(sitting: number, role: "initiator" | "recipient") {
+async function submit(sitting: number, role: Role) {
   await asService(
     "insert into public.submissions (benvolio_id, sitting, role, body) values ($1, $2, $3, $4)",
     [B, sitting, role, JSON.stringify({ stance: `${role} stance ${sitting}` })],
   );
+}
+
+async function submitBoth(sitting: number) {
+  await submit(sitting, "initiator");
+  await submit(sitting, "recipient");
 }
 
 const visibleSubmissions = async (person: string) =>
@@ -54,8 +73,8 @@ beforeAll(async () => {
 afterAll(() => db.close());
 
 beforeEach(async () => {
-  await asService("truncate public.benvolios, public.people, auth.users cascade");
-  await asService(
+  await db.exec("truncate public.benvolios, public.people, auth.users cascade");
+  await db.query(
     `insert into auth.users (id, email) values ($1, 'jane@example.com'), ($2, 'rhonda@example.com'), ($3, 'x@example.com')`,
     [JANE, RHONDA, STRANGER],
   );
@@ -65,8 +84,8 @@ beforeEach(async () => {
   );
   await asService(`insert into public.benvolios (id, question) values ($1, 'Should we get a dog?')`, [B]);
   await asService(
-    `insert into public.participants (benvolio_id, role, person_id, first_name, joined_at)
-     values ($1, 'initiator', $2, 'Jane', now()), ($1, 'recipient', $3, 'Rhonda', now())`,
+    `insert into public.participants (benvolio_id, role, person_id, first_name)
+     values ($1, 'initiator', $2, 'Jane'), ($1, 'recipient', $3, 'Rhonda')`,
     [B, JANE, RHONDA],
   );
 });
@@ -87,23 +106,14 @@ describe("reading submissions", () => {
   });
 
   it("keeps a later sitting hidden until both have written it", async () => {
-    await submit(0, "initiator");
-    await submit(0, "recipient");
+    await submitBoth(0);
     await submit(1, "initiator");
     expect(await visibleSubmissions(RHONDA)).toHaveLength(2);
     expect(await visibleSubmissions(JANE)).toHaveLength(3);
   });
 
-  it("holds the opening while new wording for the question is pending", async () => {
-    await submit(0, "initiator");
-    await submit(0, "recipient");
-    await asService("update public.benvolios set proposed_question = 'Should we get a dog this year?' where id = $1", [B]);
-    expect(await visibleSubmissions(JANE)).toEqual([{ sitting: 0, role: "initiator" }]);
-  });
-
   it("shows nothing to someone outside the Benvolio or signed out", async () => {
-    await submit(0, "initiator");
-    await submit(0, "recipient");
+    await submitBoth(0);
     expect(await visibleSubmissions(STRANGER)).toEqual([]);
     await expect(as(null, "select * from public.submissions")).rejects.toThrow(/permission denied/);
   });
@@ -115,13 +125,14 @@ describe("reading everything else", () => {
       { question: "Should we get a dog?" },
     ]);
     expect((await as(STRANGER, "select * from public.benvolios")).rows).toEqual([]);
-    expect((await as(RHONDA, "select first_name from public.people order by first_name")).rows).toEqual([
+    expect((await as(RHONDA, "select first_name from public.participants order by first_name")).rows).toEqual([
       { first_name: "Jane" },
       { first_name: "Rhonda" },
     ]);
-    expect((await as(STRANGER, "select first_name from public.people")).rows).toEqual([
-      { first_name: "Stranger" },
+    expect((await as(RHONDA, "select first_name from public.people")).rows).toEqual([
+      { first_name: "Rhonda" },
     ]);
+    expect((await as(STRANGER, "select first_name from public.participants")).rows).toEqual([]);
   });
 
   it("never exposes invites or the email log to the browser", async () => {
@@ -142,10 +153,18 @@ describe("writing", () => {
 });
 
 describe("constraints", () => {
-  it("allows one submission per person per sitting, for sittings 0 to 5 only", async () => {
+  it("allows one submission per person per sitting, for the model's sittings only", async () => {
     await submit(0, "initiator");
     await expect(submit(0, "initiator")).rejects.toThrow(/duplicate key/);
-    await expect(submit(6, "initiator")).rejects.toThrow(/check constraint/);
+    await submit(LAST_SITTING, "initiator");
+    await expect(submit(LAST_SITTING + 1, "initiator")).rejects.toThrow(/check constraint/);
+  });
+
+  it("allows questions up to the model's length limit", async () => {
+    const update = (n: number) =>
+      asService("update public.benvolios set question = $1 where id = $2", ["q".repeat(n), B]);
+    await update(MAX_QUESTION_LENGTH);
+    await expect(update(MAX_QUESTION_LENGTH + 1)).rejects.toThrow(/check constraint/);
   });
 
   it("deletes everything about a Benvolio with it", async () => {
@@ -155,5 +174,43 @@ describe("constraints", () => {
       "select (select count(*) from public.submissions) + (select count(*) from public.participants) as n",
     );
     expect(Number((left.rows[0] as { n: number }).n)).toBe(0);
+  });
+});
+
+describe("agreement with the turn-taking model", () => {
+  const sittingBody: Record<number, object> = {
+    0: { stance: "s", write: ["a", "b", "c"] },
+    1: { respond: { kind: "rephrase", texts: ["a", "b", "c"] }, write: ["a", "b", "c"] },
+    2: { respond: { kind: "answer", texts: ["a", "b", "c"], tags: [[], [], []] }, write: ["a", "b", "c"] },
+  };
+  const person = { initiator: JANE, recipient: RHONDA };
+
+  /** What the model says each person may see, as (sitting, role) pairs. */
+  function modelView(c: Conversation, viewer: Role) {
+    const rows: { sitting: number; role: Role }[] = [];
+    for (let sitting = 0; sitting <= LAST_SITTING; sitting++) {
+      const { mine, partner } = modelVisible(c, sitting, viewer);
+      const other: Role = viewer === "initiator" ? "recipient" : "initiator";
+      const seen = [mine && viewer, partner && other].filter(Boolean) as Role[];
+      for (const role of seen.sort()) rows.push({ sitting, role });
+    }
+    return rows;
+  }
+
+  it("shows each person exactly what the model allows at every step", async () => {
+    let c = joinConversation(startConversation("Should we get a dog?"));
+    const steps: [number, Role][] = [
+      [0, "initiator"], [0, "recipient"], [1, "recipient"], [1, "initiator"], [2, "initiator"], [2, "recipient"],
+    ];
+    for (const [sitting, role] of steps) {
+      c = submitTurn(c, role, sitting, sittingBody[sitting]);
+      await asService(
+        "insert into public.submissions (benvolio_id, sitting, role, body) values ($1, $2, $3, $4)",
+        [B, sitting, role, JSON.stringify(sittingBody[sitting])],
+      );
+      for (const viewer of ["initiator", "recipient"] as const) {
+        expect(await visibleSubmissions(person[viewer])).toEqual(modelView(c, viewer));
+      }
+    }
   });
 });
