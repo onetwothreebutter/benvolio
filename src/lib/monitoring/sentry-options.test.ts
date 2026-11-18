@@ -1,22 +1,29 @@
 import type { ErrorEvent } from "@sentry/nextjs";
 import { describe, expect, it } from "vitest";
-import { scrubEvent } from "./sentry-options";
+import { sentryOptions } from "./sentry-options";
 
-describe("scrubEvent", () => {
-  it("removes request bodies, cookies, headers and user details", () => {
-    const event = {
+describe("sentryOptions", () => {
+  it("turns off collection of personal data", () => {
+    expect(sentryOptions.dataCollection).toEqual({
+      userInfo: false,
+      cookies: false,
+      httpHeaders: false,
+      httpBodies: [],
+      urlQueryParams: false,
+    });
+  });
+
+  it("redacts URLs in events and breadcrumbs", () => {
+    const event = sentryOptions.beforeSend({
       type: undefined,
-      request: {
-        url: "https://benvolio.app/join/Xy7_k2Lm9QwErTy0UiOp?x=1",
-        data: { answer: "Because I feel lonely" },
-        cookies: { session: "secret" },
-        headers: { authorization: "Bearer secret" },
-        query_string: "x=1",
-      },
-      user: { id: "person-1", email: "jane@example.com", ip_address: "1.2.3.4" },
-    } as ErrorEvent;
-    const scrubbed = scrubEvent(event);
-    expect(scrubbed.request).toEqual({ url: "https://benvolio.app/join/:id" });
-    expect(scrubbed.user).toEqual({ id: "person-1" });
+      request: { url: "https://benvolio.app/join/Xy7_k2Lm9QwErTy0UiOp?x=1" },
+    } as ErrorEvent);
+    expect(event.request?.url).toBe("https://benvolio.app/join/:id");
+
+    const crumb = sentryOptions.beforeBreadcrumb({
+      category: "navigation",
+      data: { from: "/", to: "/join/Xy7_k2Lm9QwErTy0UiOp" },
+    });
+    expect(crumb.data).toEqual({ from: "/", to: "/join/:id" });
   });
 });

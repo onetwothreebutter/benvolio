@@ -1,64 +1,67 @@
-import posthog, { type CaptureResult } from "posthog-js";
-import {
-  assertSafeProperties,
-  type AnalyticsEventName,
-  type AnalyticsEvents,
-} from "./events";
-import { redactUrl } from "./redact-url";
-
-const URL_PROPERTIES = [
-  "$current_url",
-  "$referrer",
-  "$initial_current_url",
-  "$initial_referrer",
-  "$prev_pageview_url",
-] as const;
+import type { CaptureResult, PostHog } from "posthog-js";
+import type { AnalyticsEventName, AnalyticsEvents } from "./events";
+import { isSendable } from "./guard";
+import { redactUrlsDeep } from "./redact-url";
 
 export function redactCapture(event: CaptureResult | null): CaptureResult | null {
   if (!event) return event;
-  for (const key of URL_PROPERTIES) {
-    const value = event.properties[key];
-    if (typeof value === "string") event.properties[key] = redactUrl(value);
-  }
-  return event;
+  return {
+    ...event,
+    properties: redactUrlsDeep(event.properties),
+    $set: redactUrlsDeep(event.$set),
+    $set_once: redactUrlsDeep(event.$set_once),
+  };
 }
 
-let started = false;
+let loading: Promise<PostHog | null> | undefined;
 
-/** Starts PostHog in the browser. Does nothing without a project key. */
+/**
+ * Loads PostHog on first use, off the critical path, and only when a project
+ * key is set. Calls made before it loads wait for it.
+ */
+function posthog(): Promise<PostHog | null> {
+  loading ??= (async () => {
+    const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+    if (!key) return null;
+    const { default: client } = await import("posthog-js");
+    client.init(key, {
+      // Proxied through next.config.ts so ad blockers don't drop events.
+      api_host: "/ingest",
+      ui_host: process.env.NEXT_PUBLIC_POSTHOG_UI_HOST ?? "https://us.posthog.com",
+      defaults: "2025-05-24",
+      person_profiles: "identified_only",
+      // Only explicit, typed events: autocapture could pick up text on screen.
+      autocapture: false,
+      // Overrides any replay setting in the PostHog project: screens show what people wrote.
+      disable_session_recording: true,
+      capture_performance: { web_vitals: true, network_timing: false },
+      before_send: redactCapture,
+    });
+    return client;
+  })();
+  return loading;
+}
+
+/** Starts PostHog once the page is idle. Does nothing without a project key. */
 export function initAnalytics(): void {
-  const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-  if (started || !key) return;
-  posthog.init(key, {
-    // Proxied through next.config.ts so ad blockers don't drop events.
-    api_host: "/ingest",
-    ui_host: process.env.NEXT_PUBLIC_POSTHOG_UI_HOST ?? "https://us.posthog.com",
-    defaults: "2025-05-24",
-    person_profiles: "identified_only",
-    // Only explicit, typed events: autocapture could pick up text on screen.
-    autocapture: false,
-    capture_pageview: "history_change",
-    capture_performance: { web_vitals: true, network_timing: false },
-    disable_session_recording: true,
-    mask_all_text: true,
-    before_send: redactCapture,
-  });
-  started = true;
+  const start = () => void posthog();
+  if (typeof requestIdleCallback === "function") requestIdleCallback(start);
+  else setTimeout(start, 1);
 }
 
 export function track<E extends AnalyticsEventName>(
   event: E,
   properties: AnalyticsEvents[E],
 ): void {
-  assertSafeProperties(properties);
-  if (started) posthog.capture(event, properties);
+  if (!isSendable(event, properties)) return;
+  void posthog().then((client) => client?.capture(event, properties));
 }
 
 /** Links events to a signed-in person by their opaque id, never their email. */
 export function identify(personId: string): void {
-  if (started) posthog.identify(personId);
+  void posthog().then((client) => client?.identify(personId));
 }
 
 export function resetIdentity(): void {
-  if (started) posthog.reset();
+  void posthog().then((client) => client?.reset());
 }

@@ -1,27 +1,24 @@
-import type { ErrorEvent } from "@sentry/nextjs";
-import { redactUrl } from "@/lib/analytics/redact-url";
+import type * as Sentry from "@sentry/nextjs";
+import { redactUrlsDeep } from "@/lib/analytics/redact-url";
+
+type Options = NonNullable<Parameters<typeof Sentry.init>[0]>;
 
 /**
- * Drops anything from an error report that could contain what someone wrote or
- * who they are: request bodies, cookies, headers, query strings, user details.
+ * Errors only, no tracing. Sentry's own data collection is turned off for
+ * anything that could contain what someone wrote or who they are, and every
+ * URL in an event or breadcrumb loses its query string and tokens.
+ * With no DSN set, Sentry sends nothing.
  */
-export function scrubEvent<T extends ErrorEvent>(event: T): T {
-  if (event.request) {
-    delete event.request.data;
-    delete event.request.cookies;
-    delete event.request.headers;
-    delete event.request.query_string;
-    if (event.request.url) event.request.url = redactUrl(event.request.url);
-  }
-  if (event.user) event.user = event.user.id ? { id: event.user.id } : undefined;
-  return event;
-}
-
 export const sentryOptions = {
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  enabled: Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN),
   environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV,
-  sendDefaultPii: false,
-  tracesSampleRate: 0.1,
-  beforeSend: scrubEvent,
-};
+  dataCollection: {
+    userInfo: false,
+    cookies: false,
+    httpHeaders: false,
+    httpBodies: [],
+    urlQueryParams: false,
+  },
+  beforeSend: (event) => redactUrlsDeep(event),
+  beforeBreadcrumb: (breadcrumb) => redactUrlsDeep(breadcrumb),
+} satisfies Options;

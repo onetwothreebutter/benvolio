@@ -5,14 +5,14 @@ Benvolio records what happens in a conversation, never what anyone writes in it.
 ## The privacy rule
 
 - Analytics events carry only ids, enum slugs, numbers and booleans. The full
-  list is typed in `src/lib/analytics/events.ts`, and `assertSafeProperties`
-  throws if a value could be free text.
-- URLs are stripped of query strings, fragments and token-like path segments
+  list is typed in `src/lib/analytics/events.ts`, and `findUnsafeProperty`
+  drops (and reports) any event whose values could be free text.
+- Every URL-looking value is stripped of query strings, fragments and token-like path segments
   before they are sent (`src/lib/analytics/redact-url.ts`), so invite links
   never reach PostHog or Sentry.
 - PostHog autocapture and session replay are off. Sentry session replay is not
   installed. Sentry error reports have request bodies, cookies, headers and
-  user details removed (`src/lib/monitoring/sentry-options.ts`).
+  user details turned off, and breadcrumb URLs redacted too (`src/lib/monitoring/sentry-options.ts`).
 - People are identified by their opaque id, never their email.
 
 ## Tools
@@ -20,7 +20,7 @@ Benvolio records what happens in a conversation, never what anyone writes in it.
 | Tool | Watches | Set up in |
 | --- | --- | --- |
 | PostHog | Funnels from invite to finish, waits between turns, where conversations stall, web vitals, the end-of-conversation survey | `instrumentation-client.ts`, `src/lib/analytics/` |
-| Sentry | Errors on the client, server and edge, and slow requests | `instrumentation*.ts`, `sentry.*.config.ts` |
+| Sentry | Errors on the client, server and edge, (errors only, no tracing) | `instrumentation*.ts`, `src/lib/monitoring/` |
 | Sentry cron monitors | The hourly reminder job (added with that job) | later PR |
 | Postmark webhooks | Bounces and spam complaints, recorded as PostHog events (added with email) | later PR |
 | Uptime monitor | The site being reachable | external, see below |

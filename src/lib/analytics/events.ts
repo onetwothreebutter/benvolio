@@ -2,7 +2,7 @@
  * Every analytics event Benvolio sends, and the properties each one carries.
  *
  * Privacy rule: events describe what happened, never what anyone wrote. Property
- * values are ids, enum slugs, numbers or booleans. `assertSafeProperties` enforces
+ * values are ids, enum slugs, numbers or booleans. `findUnsafeProperty` enforces
  * this at runtime as a backstop to the types.
  */
 
@@ -34,19 +34,14 @@ export type AnalyticsEventName = keyof AnalyticsEvents;
 // Ids and enum slugs: letters, digits, "_" and "-", no spaces, at most 64 chars.
 const SAFE_STRING = /^[A-Za-z0-9_-]{1,64}$/;
 
-export class UnsafeAnalyticsPropertyError extends Error {}
-
-/** Throws if any property could hold user-written text. */
-export function assertSafeProperties(properties: Record<string, unknown>): void {
+/** Returns the name of the first property that could hold free text, or null. */
+export function findUnsafeProperty(properties: Record<string, unknown>): string | null {
   for (const [key, value] of Object.entries(properties)) {
     const ok =
       typeof value === "number" ||
       typeof value === "boolean" ||
       (typeof value === "string" && SAFE_STRING.test(value));
-    if (!ok) {
-      throw new UnsafeAnalyticsPropertyError(
-        `Analytics property "${key}" must be an id, slug, number or boolean`,
-      );
-    }
+    if (!ok) return key;
   }
+  return null;
 }
