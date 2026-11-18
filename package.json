@@ -14,7 +14,7 @@
     "@sentry/nextjs": "^11.14.0",
     "@supabase/ssr": "0.12.7",
     "@supabase/supabase-js": "2.119.1",
-    "next": "15.5.29",
+    "next": "16.4.6",
     "posthog-js": "^1.451.0",
     "posthog-node": "^6.0.3",
     "react": "19.1.0",
