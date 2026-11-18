@@ -44,7 +44,7 @@ describe("track", () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(posthog.capture).not.toHaveBeenCalled();
     expect(captureMessage).toHaveBeenCalledWith(
-      'Dropped analytics event "invite_sent": unsafe property "benvolio_id"',
+      "Dropped analytics event invite_sent: unsafe property benvolio_id",
       "error",
     );
   });

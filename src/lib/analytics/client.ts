@@ -68,8 +68,6 @@ function posthog(): Promise<PostHog | null> {
   return loading;
 }
 
-
-
 /** Starts PostHog once the page is idle. Does nothing without a project key. */
 export function initAnalytics(): void {
   const start = () => void posthog();

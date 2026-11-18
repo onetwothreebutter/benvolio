@@ -22,8 +22,14 @@ Benvolio records what happens in a conversation, never what anyone writes in it.
 - Page titles must never include conversation content: PostHog drops the
   `title` property, but browsers show titles elsewhere too.
 - Error messages are scrubbed of URLs, emails, tokens and quoted input, and cut
-  to 2,000 characters. Our own code must never put what someone wrote into an
-  error message.
+  to 2,000 characters. Sentry's own ids are left intact. Our own code must never
+  put what someone wrote into an error message: unquoted text in a message is
+  not caught.
+- URL redaction is a heuristic: it catches tokens with a digit, ids after
+  `/join/` and `/b/`, emails and encoded text in paths, but not a URL written
+  without a scheme. Invite tokens should therefore always contain a digit.
+- PostHog sees no client IP (the `/ingest` route doesn't pass it on), so
+  locations in PostHog are the server's, not people's.
 
 ## Tools
 

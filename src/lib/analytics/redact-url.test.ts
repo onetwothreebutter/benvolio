@@ -36,6 +36,11 @@ describe("redactUrl", () => {
     expect(redactUrl("/x/abc;e=jane")).toBe("/x/:id");
   });
 
+  it("drops user names and passwords and matches id routes in any case", () => {
+    expect(redactUrl("https://jane@example.com:pw@host.app/x")).toBe("https://host.app/x");
+    expect(redactUrl("/Join/abc")).toBe("/Join/:id");
+  });
+
   it("handles bare paths", () => {
     expect(redactUrl(`/join/${TOKEN}?x=1`)).toBe("/join/:id");
   });
@@ -86,6 +91,10 @@ describe("scrubText", () => {
 
   it("keeps long runs of letters that are not tokens", () => {
     expect(scrubText("useConversationNavigation failed")).toBe("useConversationNavigation failed");
+  });
+
+  it("cuts very long text to 2,000 characters", () => {
+    expect(scrubText("a ".repeat(5000))).toHaveLength(2001);
   });
 
   it("stays fast on very long input", () => {

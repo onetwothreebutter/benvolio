@@ -9,7 +9,7 @@ import { findUnsafeProperty, isSafeId } from "./events";
 export function isSendable(event: string, properties: Record<string, unknown>): boolean {
   const key = findUnsafeProperty(properties);
   if (key === null) return true;
-  Sentry.captureMessage(`Dropped analytics event "${event}": unsafe property "${key}"`, "error");
+  Sentry.captureMessage(`Dropped analytics event ${event}: unsafe property ${key}`, "error");
   return false;
 }
 

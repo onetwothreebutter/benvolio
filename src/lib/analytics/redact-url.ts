@@ -9,7 +9,8 @@ function redactPath(path: string): string {
   const segments = path.split("/");
   return segments
     .map((segment, i) =>
-      segment && (SENSITIVE_SEGMENT.test(segment) || ID_ROUTES.has(segments[i - 1]))
+      segment &&
+      (SENSITIVE_SEGMENT.test(segment) || ID_ROUTES.has(segments[i - 1]?.toLowerCase()))
         ? ":id"
         : segment,
     )
@@ -30,8 +31,10 @@ export function redactUrl(url: string): string {
   if (!match) return redactPath(beforeQuery);
   const afterScheme = beforeQuery.slice(match[0].length);
   const slash = afterScheme.indexOf("/");
-  if (slash === -1) return beforeQuery;
-  return match[0] + afterScheme.slice(0, slash) + redactPath(afterScheme.slice(slash));
+  const authority = slash === -1 ? afterScheme : afterScheme.slice(0, slash);
+  // Drop any "user:password@" before the host.
+  const host = authority.slice(authority.lastIndexOf("@") + 1);
+  return match[0] + host + (slash === -1 ? "" : redactPath(afterScheme.slice(slash)));
 }
 
 const URL_LIKE = /^([a-z][a-z0-9+.-]*:\/\/|\/)/i;
