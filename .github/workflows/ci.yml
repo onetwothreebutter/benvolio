@@ -32,3 +32,5 @@ jobs:
       - run: npm test
       # Lint already ran above.
       - run: npx next build --no-lint
+      # Next only runs instrumentation from the expected place; fail if it moves.
+      - run: test -f .next/server/instrumentation.js
