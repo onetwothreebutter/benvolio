@@ -38,7 +38,7 @@ Benvolio records what happens in a conversation, never what anyone writes in it.
 | PostHog | Funnels from invite to finish, waits between turns, where conversations stall, web vitals, the end-of-conversation rating (a typed event, since PostHog surveys are off) | `src/instrumentation-client.ts`, `src/lib/analytics/`, `src/app/ingest/` |
 | Sentry | Errors on the client, server and edge (errors only, no tracing) | `src/instrumentation*.ts`, `src/lib/monitoring/` |
 | Sentry cron monitors | The hourly reminder job (added with that job) | later PR |
-| Postmark webhooks | Bounces and spam complaints, recorded as PostHog events (added with email) | later PR |
+| Resend webhooks | Bounces and spam complaints, recorded as PostHog events (added with email) | later PR |
 | Uptime monitor | The site being reachable | external, see below |
 
 Both PostHog and Sentry are proxied through the app's own domain (the `/ingest`
