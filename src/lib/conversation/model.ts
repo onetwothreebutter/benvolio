@@ -153,7 +153,10 @@ export function inviteView(c: Conversation) {
 
 export function join(c: Conversation, proposedQuestion?: string): Conversation {
   if (c.recipientJoined) throw new TurnError("Already joined");
-  const proposed = proposedQuestion === undefined ? undefined : cleanQuestion(proposedQuestion);
+  // A blank proposal means the recipient kept the wording as sent.
+  const blank = typeof proposedQuestion === "string" && proposedQuestion.trim() === "";
+  const proposed =
+    proposedQuestion === undefined || blank ? undefined : cleanQuestion(proposedQuestion);
   return {
     ...c,
     recipientJoined: true,
@@ -173,7 +176,8 @@ export function decideQuestion(c: Conversation, role: Role, accept: boolean): Co
   }
   if (!accept) return { ...c, question: { text: c.question.text } };
   const submissions = [...c.submissions];
-  if (submissions[0]) submissions[0] = { recipient: submissions[0].recipient };
+  // The recipient can't have written yet: they wait while wording is pending.
+  submissions[0] = {};
   return { ...c, question: { text: proposed }, submissions };
 }
 

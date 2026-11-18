@@ -89,6 +89,10 @@ describe("rewording the question", () => {
     expect(isRevealed(c, 0)).toBe(false);
   });
 
+  it("treats a blank suggestion as keeping the wording", () => {
+    expect(join(started(), "   ").question).toEqual({ text: "Should we get a dog?" });
+  });
+
   it("treats a change of case or spacing as the same wording", () => {
     expect(join(started(), "  should we  get a DOG? ").question).toEqual({ text: "Should we get a dog?" });
   });
@@ -98,8 +102,10 @@ describe("rewording the question", () => {
     expect(c.question).toEqual({ text: NEW });
     expect(nextAction(c, "initiator")).toEqual({ kind: "sit", sitting: 0 });
     expect(nextAction(c, "recipient")).toEqual({ kind: "sit", sitting: 0 });
-    c = sit(sit(c, "recipient", 0), "initiator", 0);
+    const revised: Submission = { stance: "Revised stance", write: three("revised reason") };
+    c = submit(sit(c, "recipient", 0), "initiator", 0, revised);
     expect(isRevealed(c, 0)).toBe(true);
+    expect(visibleSubmissions(c, 0, "recipient").partner).toEqual(revised);
   });
 
   it("declining keeps the original wording and the initiator's opening", () => {
