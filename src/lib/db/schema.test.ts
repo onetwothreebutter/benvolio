@@ -143,10 +143,12 @@ describe("reading everything else", () => {
   });
 
   it("does not let anyone call the policy helpers directly", async () => {
-    await expect(as(null, "select private.my_benvolio_ids()")).rejects.toThrow(/permission denied/);
-    await expect(as(null, `select private.can_read_submission('${B}', 0::smallint, 'initiator')`)).rejects.toThrow(
-      /permission denied/,
+    const { rows } = await db.query(
+      `select has_function_privilege('anon', 'private.my_benvolio_ids()', 'execute') as ids,
+              has_function_privilege('anon', 'private.can_read_submission(uuid, smallint, public.participant_role)', 'execute') as can_read,
+              has_schema_privilege('anon', 'private', 'usage') as schema_usage`,
     );
+    expect(rows).toEqual([{ ids: false, can_read: false, schema_usage: false }]);
   });
 
   it("never exposes invites or the email log to the browser", async () => {
@@ -207,6 +209,10 @@ describe("constraints", () => {
     expect((await send(null, "your_turn")).rows).toHaveLength(1);
     expect((await send(null, "your_turn")).rows).toHaveLength(0);
     await expect(send(null)).rejects.toThrow(/check constraint/);
+    await expect(send(1, "your_turn")).rejects.toThrow(/check constraint/);
+    // An invite can be re-sent after it expires.
+    expect((await send(null, "invite")).rows).toHaveLength(1);
+    expect((await send(1, "invite")).rows).toHaveLength(1);
   });
 
   it("deletes everything about a Benvolio with it", async () => {

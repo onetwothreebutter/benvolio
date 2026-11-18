@@ -8,7 +8,7 @@
 
 create type public.participant_role as enum ('initiator', 'recipient');
 create type public.benvolio_pace as enum ('daily', 'weekly');
-create type public.email_kind as enum ('invite', 'your_turn', 'reminder', 'finished');
+create type public.email_kind as enum ('invite', 'question_proposed', 'your_turn', 'reminder', 'finished');
 
 -- Emails live in auth.users (and, before the recipient has an account, on
 -- their invite). first_name here is the person's own; participants.first_name
@@ -53,6 +53,8 @@ create table public.invites (
   created_at timestamptz not null default now(),
   expires_at timestamptz not null default now() + interval '30 days'
 );
+-- For the job that deletes expired invites, and the emails on them.
+create index invites_expires_at on public.invites (expires_at);
 
 create table public.submissions (
   benvolio_id uuid not null,
@@ -77,9 +79,11 @@ create table public.notifications (
   kind public.email_kind not null,
   -- The sitting the email is about (null for the invite and the finish email).
   sitting smallint check (sitting between 0 and 5),
+  -- Which reminder (1 to 3), or which re-send of an invite (null for the first).
   reminder_number smallint check (reminder_number between 1 and 3),
   sent_at timestamptz not null default now(),
-  check ((kind = 'reminder') = (reminder_number is not null)),
+  check (kind <> 'reminder' or reminder_number is not null),
+  check (kind in ('reminder', 'invite') or reminder_number is null),
   unique nulls not distinct (benvolio_id, role, kind, sitting, reminder_number)
 );
 
