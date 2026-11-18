@@ -24,12 +24,34 @@ describe("redactUrl", () => {
     expect(redactUrl("/notification-settings")).toBe("/notification-settings");
   });
 
+  it("redacts the segment after an id route, even without a digit", () => {
+    expect(redactUrl("/join/abcdefghijklmnopqrstuv")).toBe("/join/:id");
+    expect(redactUrl("/b/short/round/2")).toBe("/b/:id/round/2");
+  });
+
+  it("handles other schemes, upper case and path parameters", () => {
+    expect(redactUrl(`HTTPS://benvolio.app/x/${TOKEN}?a=1`)).toBe("HTTPS://benvolio.app/x/:id");
+    expect(redactUrl(`ws://host/socket/${TOKEN}`)).toBe("ws://host/socket/:id");
+    expect(redactUrl("app:///_next/static/chunks/main.js?v=1")).toBe("app:///_next/static/chunks/main.js");
+    expect(redactUrl("/x/abc;e=jane")).toBe("/x/:id");
+  });
+
   it("handles bare paths", () => {
     expect(redactUrl(`/join/${TOKEN}?x=1`)).toBe("/join/:id");
   });
 });
 
 describe("redactUrlsDeep", () => {
+  it("leaves dates and repeated references alone", () => {
+    const date = new Date(0);
+    const shared = { u: `/join/${TOKEN}` };
+    const loop: Record<string, unknown> = { a: shared };
+    loop.self = loop;
+    const out = redactUrlsDeep({ date, loop });
+    expect(out.date).toBe(date);
+    expect((out.loop as { a: { u: string } }).a.u).toBe("/join/:id");
+  });
+
   it("redacts URLs at any depth and leaves other values alone", () => {
     expect(
       redactUrlsDeep({
@@ -54,6 +76,22 @@ describe("scrubText", () => {
         `GET /join/${TOKEN}?e=a@b.co failed; see https://benvolio.app/b/${TOKEN}#x for jane.doe@example.com`,
       ),
     ).toBe("GET /join/:id failed; see https://benvolio.app/b/:id for [email]");
+  });
+
+  it("replaces quoted input that engines echo back", () => {
+    expect(scrubText(`Unexpected token 'W', "We should "... is not valid JSON`)).toBe(
+      `Unexpected token 'W', "[text]"... is not valid JSON`,
+    );
+  });
+
+  it("keeps long runs of letters that are not tokens", () => {
+    expect(scrubText("useConversationNavigation failed")).toBe("useConversationNavigation failed");
+  });
+
+  it("stays fast on very long input", () => {
+    const start = performance.now();
+    for (const chunk of ["/a", "a-", "x@a.", "a"]) scrubText(chunk.repeat(50_000));
+    expect(performance.now() - start).toBeLessThan(500);
   });
 
   it("leaves ordinary sentences alone", () => {

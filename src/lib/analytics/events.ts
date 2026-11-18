@@ -34,13 +34,18 @@ export type AnalyticsEventName = keyof AnalyticsEvents;
 // Ids and enum slugs: letters, digits, "_" and "-", no spaces, at most 64 chars.
 const SAFE_STRING = /^[A-Za-z0-9_-]{1,64}$/;
 
+/** True for an id or enum slug: never free text, never an email. */
+export function isSafeId(value: unknown): value is string {
+  return typeof value === "string" && SAFE_STRING.test(value);
+}
+
 /** Returns the name of the first property that could hold free text, or null. */
 export function findUnsafeProperty(properties: Record<string, unknown>): string | null {
   for (const [key, value] of Object.entries(properties)) {
     const ok =
       typeof value === "number" ||
       typeof value === "boolean" ||
-      (typeof value === "string" && SAFE_STRING.test(value));
+      isSafeId(value);
     if (!ok) return key;
   }
   return null;

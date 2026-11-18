@@ -58,7 +58,60 @@ describe("track", () => {
   });
 });
 
+describe("PostHog settings", () => {
+  it("keeps every privacy switch set in code", async () => {
+    const { POSTHOG_CONFIG, redactCapture } = await loadClient(undefined);
+    expect(POSTHOG_CONFIG).toMatchObject({
+      api_host: "/ingest",
+      autocapture: false,
+      persistence: "localStorage",
+      disable_session_recording: true,
+      capture_dead_clicks: false,
+      capture_heatmaps: false,
+      capture_exceptions: false,
+      logs: { captureConsoleLogs: false },
+      disable_surveys: true,
+      advanced_disable_flags: true,
+    });
+    expect(POSTHOG_CONFIG.before_send).toBe(redactCapture);
+  });
+});
+
+describe("identify", () => {
+  it("drops anything that is not an opaque id", async () => {
+    const { identify } = await loadClient("phc_test");
+    identify("jane@example.com");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(posthog.identify).not.toHaveBeenCalled();
+    expect(captureMessage).toHaveBeenCalled();
+  });
+});
+
+describe("loading", () => {
+  it("tries again after PostHog fails to load", async () => {
+    const { track } = await loadClient("phc_test");
+    posthog.init.mockImplementationOnce(() => {
+      throw new Error("chunk failed");
+    });
+    track("invite_sent", { benvolio_id: ID });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(posthog.capture).not.toHaveBeenCalled();
+    track("invite_sent", { benvolio_id: ID });
+    await vi.waitFor(() => expect(posthog.capture).toHaveBeenCalledOnce());
+  });
+});
+
 describe("redactCapture", () => {
+  it("removes the page title and search keyword", async () => {
+    const { redactCapture } = await loadClient(undefined);
+    const result = redactCapture({
+      uuid: "u",
+      event: "$pageview",
+      properties: { title: "Should we get a dog?", ph_keyword: "dog", $pathname: "/" },
+    } as CaptureResult);
+    expect(result?.properties).toEqual({ $pathname: "/" });
+  });
+
   it("redacts URLs in properties, $set and $set_once", async () => {
     const { redactCapture } = await loadClient(undefined);
     const result = redactCapture({

@@ -1,17 +1,14 @@
 import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
-import { POSTHOG_ASSETS_HOST, POSTHOG_HOST } from "./src/lib/analytics/hosts";
 
 const nextConfig: NextConfig = {
-  // PostHog calls go through our own domain so ad blockers don't drop them.
-  async rewrites() {
-    return [
-      { source: "/ingest/static/:path*", destination: `${POSTHOG_ASSETS_HOST}/static/:path*` },
-      { source: "/ingest/:path*", destination: `${POSTHOG_HOST}/:path*` },
-    ];
-  },
-  // Required by the PostHog proxy above.
+  // PostHog's endpoints end in "/"; keep them as sent to the /ingest route.
   skipTrailingSlashRedirect: true,
+  async headers() {
+    // Pages like invite links must never leak their URL to other sites or to
+    // our own analytics requests.
+    return [{ source: "/:path*", headers: [{ key: "Referrer-Policy", value: "strict-origin" }] }];
+  },
 };
 
 // SENTRY_ORG, SENTRY_PROJECT and SENTRY_AUTH_TOKEN (for source maps) come from the environment.

@@ -24,7 +24,12 @@ describe("sentryOptions", () => {
         values: [
           {
             value: `Failed to fetch RSC payload for https://benvolio.app/join/${TOKEN}?_rsc=1`,
-            stacktrace: { frames: [{ filename: "app:///_next/static/chunks/a1b2c3d4e5f6a7b8.js" }] },
+            stacktrace: {
+              frames: [
+                { filename: "app:///_next/static/chunks/a1b2c3d4e5f6a7b8.js", lineno: 1 },
+                { filename: `https://benvolio.app/join/${TOKEN}?e=jane@example.com`, abs_path: `https://benvolio.app/join/${TOKEN}#x` },
+              ],
+            },
           },
         ],
       },
@@ -34,10 +39,11 @@ describe("sentryOptions", () => {
     expect(event.exception?.values?.[0].value).toBe(
       "Failed to fetch RSC payload for https://benvolio.app/join/:id",
     );
-    // Stack frames are left alone so source maps still match.
-    expect(event.exception?.values?.[0].stacktrace?.frames?.[0].filename).toBe(
-      "app:///_next/static/chunks/a1b2c3d4e5f6a7b8.js",
-    );
+    // Bundle file names and hashes stay so source maps still match; query strings go.
+    const frames = event.exception?.values?.[0].stacktrace?.frames;
+    expect(frames?.[0]).toEqual({ filename: "app:///_next/static/chunks/a1b2c3d4e5f6a7b8.js", lineno: 1 });
+    expect(frames?.[1].filename).toBe(`https://benvolio.app/join/${TOKEN}`);
+    expect(frames?.[1].abs_path).toBe(`https://benvolio.app/join/${TOKEN}`);
   });
 
   it("drops console breadcrumbs and scrubs the rest", () => {

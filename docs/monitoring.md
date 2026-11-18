@@ -16,20 +16,28 @@ Benvolio records what happens in a conversation, never what anyone writes in it.
   installed. Sentry error reports have request bodies, cookies, headers and
   user details turned off, console output is not recorded, and URLs, emails
   and tokens are scrubbed from every remaining string, including error messages (`src/lib/monitoring/sentry-options.ts`).
-- People are identified by their opaque id, never their email.
+- People are identified by their opaque id, never their email; anything else is
+  dropped. PostHog keeps its state in localStorage, not cookies, and every page
+  sends `Referrer-Policy: strict-origin`.
+- Page titles must never include conversation content: PostHog drops the
+  `title` property, but browsers show titles elsewhere too.
+- Error messages are scrubbed of URLs, emails, tokens and quoted input, and cut
+  to 2,000 characters. Our own code must never put what someone wrote into an
+  error message.
 
 ## Tools
 
 | Tool | Watches | Set up in |
 | --- | --- | --- |
-| PostHog | Funnels from invite to finish, waits between turns, where conversations stall, web vitals, the end-of-conversation survey | `instrumentation-client.ts`, `src/lib/analytics/` |
-| Sentry | Errors on the client, server and edge, (errors only, no tracing) | `instrumentation*.ts`, `src/lib/monitoring/` |
+| PostHog | Funnels from invite to finish, waits between turns, where conversations stall, web vitals, the end-of-conversation rating (a typed event, since PostHog surveys are off) | `src/instrumentation-client.ts`, `src/lib/analytics/`, `src/app/ingest/` |
+| Sentry | Errors on the client, server and edge (errors only, no tracing) | `src/instrumentation*.ts`, `src/lib/monitoring/` |
 | Sentry cron monitors | The hourly reminder job (added with that job) | later PR |
 | Postmark webhooks | Bounces and spam complaints, recorded as PostHog events (added with email) | later PR |
 | Uptime monitor | The site being reachable | external, see below |
 
-Both PostHog and Sentry are proxied through the app's own domain (`/ingest`,
-and Sentry's managed tunnel) so ad blockers don't drop them. Without their environment
+Both PostHog and Sentry are proxied through the app's own domain (the `/ingest`
+route, which forwards no cookies, Referer or IP address, and Sentry's managed
+tunnel) so ad blockers don't drop them. Without their environment
 variables (see `.env.example`), both are switched off.
 
 ## Setting up the accounts

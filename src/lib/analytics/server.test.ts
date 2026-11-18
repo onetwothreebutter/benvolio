@@ -42,6 +42,12 @@ describe("trackServer", () => {
     expect(ph.flush).toHaveBeenCalledOnce();
   });
 
+  it("drops an event for a person id that is not opaque", async () => {
+    const { trackServer } = await loadServer("phc_test");
+    trackServer("jane@example.com", "invite_sent", { benvolio_id: ID });
+    expect(ph.capture).not.toHaveBeenCalled();
+  });
+
   it("does nothing without a project key", async () => {
     const { trackServer } = await loadServer("");
     trackServer("person-1", "invite_sent", { benvolio_id: ID });

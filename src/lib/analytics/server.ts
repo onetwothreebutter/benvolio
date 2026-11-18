@@ -2,7 +2,7 @@ import "server-only";
 import { after } from "next/server";
 import { PostHog } from "posthog-node";
 import type { AnalyticsEventName, AnalyticsEvents } from "./events";
-import { isSendable } from "./guard";
+import { isSendable, isSendablePersonId } from "./guard";
 import { POSTHOG_HOST } from "./hosts";
 
 let client: PostHog | null | undefined;
@@ -25,7 +25,7 @@ export function trackServer<E extends AnalyticsEventName>(
   event: E,
   properties: AnalyticsEvents[E],
 ): void {
-  if (!isSendable(event, properties)) return;
+  if (!isSendablePersonId(personId) || !isSendable(event, properties)) return;
   const posthog = getClient();
   if (!posthog) return;
   posthog.capture({ distinctId: personId, event, properties });

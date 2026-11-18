@@ -1,17 +1,51 @@
-import type { CaptureResult, PostHog } from "posthog-js";
+import type { CaptureResult, PostHog, PostHogConfig } from "posthog-js";
 import type { AnalyticsEventName, AnalyticsEvents } from "./events";
-import { isSendable } from "./guard";
+import { isSendable, isSendablePersonId } from "./guard";
 import { redactUrlsDeep } from "./redact-url";
+
+// Free-text properties PostHog adds to its own events: the page title, and a
+// search query taken from the referrer.
+const FREE_TEXT_PROPERTIES = ["title", "ph_keyword"];
 
 export function redactCapture(event: CaptureResult | null): CaptureResult | null {
   if (!event) return event;
+  const properties = { ...event.properties };
+  for (const key of FREE_TEXT_PROPERTIES) delete properties[key];
   return {
     ...event,
-    properties: redactUrlsDeep(event.properties),
+    properties: redactUrlsDeep(properties),
     $set: redactUrlsDeep(event.$set),
     $set_once: redactUrlsDeep(event.$set_once),
   };
 }
+
+export const POSTHOG_CONFIG: Partial<PostHogConfig> = {
+  // Sent through our own /ingest route so ad blockers don't drop events.
+  api_host: "/ingest",
+  ui_host: process.env.NEXT_PUBLIC_POSTHOG_UI_HOST ?? "https://us.posthog.com",
+  defaults: "2025-05-24",
+  person_profiles: "identified_only",
+  // Only explicit, typed events: autocapture could pick up text on screen.
+  autocapture: false,
+  // Not cookies: they would go out with every request to our own domain.
+  persistence: "localStorage",
+  // Everything below is set here so a toggle in the PostHog project settings
+  // can never switch on something that could record what people wrote.
+  disable_session_recording: true,
+  capture_dead_clicks: false,
+  capture_heatmaps: false,
+  capture_exceptions: false,
+  logs: { captureConsoleLogs: false },
+  disable_surveys: true,
+  disable_product_tours: true,
+  disable_conversations: true,
+  disable_web_experiments: true,
+  // Feature-flag requests send the first URL a person visited, which can be
+  // an invite link, and they bypass before_send. Off until flags are needed.
+  advanced_disable_flags: true,
+  capture_performance: { web_vitals: true, network_timing: false },
+  before_send: redactCapture,
+};
 
 let loading: Promise<PostHog | null> | undefined;
 
@@ -24,35 +58,17 @@ function posthog(): Promise<PostHog | null> {
     const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
     if (!key) return null;
     const { default: client } = await import("posthog-js");
-    client.init(key, {
-      // Proxied through next.config.ts so ad blockers don't drop events.
-      api_host: "/ingest",
-      ui_host: process.env.NEXT_PUBLIC_POSTHOG_UI_HOST ?? "https://us.posthog.com",
-      defaults: "2025-05-24",
-      person_profiles: "identified_only",
-      // Only explicit, typed events: autocapture could pick up text on screen.
-      autocapture: false,
-      // Everything below is set here so a toggle in the PostHog project settings
-      // can never switch on something that could record what people wrote.
-      disable_session_recording: true,
-      capture_dead_clicks: false,
-      capture_heatmaps: false,
-      capture_exceptions: false,
-      logs: { captureConsoleLogs: false },
-      disable_surveys: true,
-      disable_product_tours: true,
-      disable_conversations: true,
-      disable_web_experiments: true,
-      // Feature-flag requests send the first URL a person visited, which can be
-      // an invite link, and they bypass before_send. Off until flags are needed.
-      advanced_disable_flags: true,
-      capture_performance: { web_vitals: true, network_timing: false },
-      before_send: redactCapture,
-    });
+    client.init(key, POSTHOG_CONFIG);
     return client;
-  })().catch(() => null);
+  })().catch(() => {
+    // Let a later call try again, e.g. after a failed chunk load.
+    loading = undefined;
+    return null;
+  });
   return loading;
 }
+
+
 
 /** Starts PostHog once the page is idle. Does nothing without a project key. */
 export function initAnalytics(): void {
@@ -71,6 +87,7 @@ export function track<E extends AnalyticsEventName>(
 
 /** Links events to a signed-in person by their opaque id, never their email. */
 export function identify(personId: string): void {
+  if (!isSendablePersonId(personId)) return;
   void posthog().then((client) => client?.identify(personId));
 }
 
