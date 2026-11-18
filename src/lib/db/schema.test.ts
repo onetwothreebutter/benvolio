@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
+  decideQuestion,
   join as joinConversation,
   LAST_SITTING,
   MAX_QUESTION_LENGTH,
@@ -112,6 +113,12 @@ describe("reading submissions", () => {
     expect(await visibleSubmissions(JANE)).toHaveLength(3);
   });
 
+  it("holds the opening while new wording is pending, even if both have written it", async () => {
+    await submitBoth(0);
+    await asService("update public.benvolios set proposed_question = 'Should we get a dog this year?' where id = $1", [B]);
+    expect(await visibleSubmissions(JANE)).toEqual([{ sitting: 0, role: "initiator" }]);
+  });
+
   it("shows nothing to someone outside the Benvolio or signed out", async () => {
     await submitBoth(0);
     expect(await visibleSubmissions(STRANGER)).toEqual([]);
@@ -133,6 +140,13 @@ describe("reading everything else", () => {
       { first_name: "Rhonda" },
     ]);
     expect((await as(STRANGER, "select first_name from public.participants")).rows).toEqual([]);
+  });
+
+  it("does not let anyone call the policy helpers directly", async () => {
+    await expect(as(null, "select private.my_benvolio_ids()")).rejects.toThrow(/permission denied/);
+    await expect(as(null, `select private.can_read_submission('${B}', 0::smallint, 'initiator')`)).rejects.toThrow(
+      /permission denied/,
+    );
   });
 
   it("never exposes invites or the email log to the browser", async () => {
@@ -167,6 +181,34 @@ describe("constraints", () => {
     await expect(update(MAX_QUESTION_LENGTH + 1)).rejects.toThrow(/check constraint/);
   });
 
+  it("requires the initiator to have an account", async () => {
+    await expect(
+      asService("update public.participants set person_id = null where role = 'initiator'"),
+    ).rejects.toThrow(/check constraint/);
+  });
+
+  it("deletes a person's Benvolios, for both people, when their account is deleted", async () => {
+    await submitBoth(0);
+    await asService("delete from public.people where id = $1", [RHONDA]);
+    expect((await asService("select count(*)::int as n from public.benvolios")).rows).toEqual([{ n: 0 }]);
+    expect(await visibleSubmissions(JANE)).toEqual([]);
+  });
+
+  it("records each reminder once, however many runs try to send it", async () => {
+    const send = (n: number | null, kind = "reminder") =>
+      asService(
+        `insert into public.notifications (benvolio_id, role, kind, sitting, reminder_number)
+         values ($1, 'recipient', $2, 1, $3) on conflict do nothing returning id`,
+        [B, kind, n],
+      );
+    expect((await send(1)).rows).toHaveLength(1);
+    expect((await send(1)).rows).toHaveLength(0);
+    expect((await send(2)).rows).toHaveLength(1);
+    expect((await send(null, "your_turn")).rows).toHaveLength(1);
+    expect((await send(null, "your_turn")).rows).toHaveLength(0);
+    await expect(send(null)).rejects.toThrow(/check constraint/);
+  });
+
   it("deletes everything about a Benvolio with it", async () => {
     await submit(0, "initiator");
     await asService("delete from public.benvolios where id = $1", [B]);
@@ -178,39 +220,69 @@ describe("constraints", () => {
 });
 
 describe("agreement with the turn-taking model", () => {
+  const items = ["a", "b", "c"];
+  const noTags = [[], [], []];
   const sittingBody: Record<number, object> = {
-    0: { stance: "s", write: ["a", "b", "c"] },
-    1: { respond: { kind: "rephrase", texts: ["a", "b", "c"] }, write: ["a", "b", "c"] },
-    2: { respond: { kind: "answer", texts: ["a", "b", "c"], tags: [[], [], []] }, write: ["a", "b", "c"] },
+    0: { stance: "s", write: items },
+    1: { respond: { kind: "rephrase", texts: items }, write: items },
+    2: { respond: { kind: "answer", texts: items, tags: noTags }, write: items },
+    3: { respond: { kind: "react", tags: noTags }, write: items },
+    4: { respond: { kind: "agree", agree: [true, false, true], tags: noTags }, write: items },
+    5: { respond: { kind: "rank", ranks: [1, 2, 3] } },
   };
   const person = { initiator: JANE, recipient: RHONDA };
 
   /** What the model says each person may see, as (sitting, role) pairs. */
   function modelView(c: Conversation, viewer: Role) {
+    const other: Role = viewer === "initiator" ? "recipient" : "initiator";
     const rows: { sitting: number; role: Role }[] = [];
     for (let sitting = 0; sitting <= LAST_SITTING; sitting++) {
       const { mine, partner } = modelVisible(c, sitting, viewer);
-      const other: Role = viewer === "initiator" ? "recipient" : "initiator";
       const seen = [mine && viewer, partner && other].filter(Boolean) as Role[];
       for (const role of seen.sort()) rows.push({ sitting, role });
     }
     return rows;
   }
 
-  it("shows each person exactly what the model allows at every step", async () => {
-    let c = joinConversation(startConversation("Should we get a dog?"));
-    const steps: [number, Role][] = [
-      [0, "initiator"], [0, "recipient"], [1, "recipient"], [1, "initiator"], [2, "initiator"], [2, "recipient"],
-    ];
-    for (const [sitting, role] of steps) {
-      c = submitTurn(c, role, sitting, sittingBody[sitting]);
-      await asService(
-        "insert into public.submissions (benvolio_id, sitting, role, body) values ($1, $2, $3, $4)",
-        [B, sitting, role, JSON.stringify(sittingBody[sitting])],
-      );
-      for (const viewer of ["initiator", "recipient"] as const) {
-        expect(await visibleSubmissions(person[viewer])).toEqual(modelView(c, viewer));
-      }
+  async function expectSameView(c: Conversation) {
+    for (const viewer of ["initiator", "recipient"] as const) {
+      expect(await visibleSubmissions(person[viewer])).toEqual(modelView(c, viewer));
     }
+  }
+
+  async function sit(c: Conversation, sitting: number, role: Role) {
+    const next = submitTurn(c, role, sitting, sittingBody[sitting]);
+    await asService(
+      "insert into public.submissions (benvolio_id, sitting, role, body) values ($1, $2, $3, $4)",
+      [B, sitting, role, JSON.stringify(sittingBody[sitting])],
+    );
+    await expectSameView(next);
+    return next;
+  }
+
+  it("shows each person exactly what the model allows through a whole conversation", async () => {
+    let c = joinConversation(startConversation("Should we get a dog?"));
+    for (let sitting = 0; sitting <= LAST_SITTING; sitting++) {
+      const [first, second]: Role[] =
+        sitting % 2 ? ["recipient", "initiator"] : ["initiator", "recipient"];
+      c = await sit(c, sitting, first);
+      c = await sit(c, sitting, second);
+    }
+  });
+
+  it("agrees while new wording is pending and after it is accepted", async () => {
+    const NEW = "Should we get a dog this year?";
+    let c = await sit(startConversation("Should we get a dog?"), 0, "initiator");
+    c = joinConversation(c, NEW);
+    await asService("update public.benvolios set proposed_question = $1 where id = $2", [NEW, B]);
+    await expectSameView(c);
+
+    c = decideQuestion(c, "initiator", true);
+    await asService("update public.benvolios set question = $1, proposed_question = null where id = $2", [NEW, B]);
+    await asService("delete from public.submissions where benvolio_id = $1 and sitting = 0 and role = 'initiator'", [B]);
+    await expectSameView(c);
+
+    c = await sit(c, 0, "recipient");
+    c = await sit(c, 0, "initiator");
   });
 });
