@@ -30,7 +30,8 @@ test("pages that need an account send signed-out people to sign in", async ({ pa
 test("a Benvolio that doesn't exist is not found", async ({ page }, testInfo) => {
   await signIn(page, newPerson("Jane", testInfo));
   for (const id of ["00000000-0000-0000-0000-000000000000", "not-an-id"]) {
-    await page.goto(`/b/${id}`);
+    const response = await page.goto(`/b/${id}`);
+    expect(response?.status()).toBe(404);
     await expect(page.getByRole("heading", { name: NOT_FOUND })).toBeVisible();
   }
 });

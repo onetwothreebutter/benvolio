@@ -3,7 +3,14 @@ import { statusLine } from "@/lib/conversation/status";
 import { INVITE_GONE, OWN_INVITE } from "@/lib/invites/messages";
 import { adminDatabase } from "./support/database";
 import { NOT_FOUND } from "./support/screen";
-import { newPerson, signIn, signInHere, startBenvolio } from "./support/people";
+import {
+  askForCode,
+  enterCode,
+  newPerson,
+  signIn,
+  signInHere,
+  startBenvolio,
+} from "./support/people";
 
 test("the partner joins from the invite link and both can see the Benvolio", async ({
   page,
@@ -53,6 +60,59 @@ test("someone already signed in joins straight from the link", async ({ page, an
   const rhondasPhone = await anotherPhone();
   await signIn(rhondasPhone, newPerson("Rhonda", testInfo));
   await rhondasPhone.goto(started.inviteUrl);
+  await rhondasPhone.getByRole("button", { name: "Join" }).click();
+  await expect(rhondasPhone).toHaveURL(`/b/${started.id}`);
+});
+
+test("tapping the emailed link from an invite comes back to the invite", async ({
+  page,
+  anotherPhone,
+}, testInfo) => {
+  await signIn(page, newPerson("Jane", testInfo));
+  const started = await startBenvolio(page, newPerson("Rhonda", testInfo));
+
+  const rhonda = newPerson("Rhonda", testInfo);
+  const rhondasPhone = await anotherPhone();
+  await rhondasPhone.goto(started.inviteUrl);
+  await rhondasPhone.getByRole("link", { name: "Sign in to join" }).click();
+  const { link } = await askForCode(rhondasPhone, rhonda.email);
+  await rhondasPhone.goto(link);
+  await rhondasPhone.getByRole("button", { name: "Continue" }).click();
+  await rhondasPhone.getByLabel("Your first name").fill(rhonda.firstName);
+  await rhondasPhone.getByRole("button", { name: "Continue" }).click();
+
+  await expect(rhondasPhone).toHaveURL(new URL(started.inviteUrl).pathname);
+  await expect(rhondasPhone.getByRole("button", { name: "Join" })).toBeVisible();
+});
+
+test("someone who stopped at the name step is asked for it before joining", async ({
+  page,
+  anotherPhone,
+}, testInfo) => {
+  await signIn(page, newPerson("Jane", testInfo));
+  const started = await startBenvolio(page, newPerson("Rhonda", testInfo));
+  const invitePath = new URL(started.inviteUrl).pathname;
+
+  const rhonda = newPerson("Rhonda", testInfo);
+  const rhondasPhone = await anotherPhone();
+  await rhondasPhone.goto("/sign-in");
+  const { code } = await askForCode(rhondasPhone, rhonda.email);
+  await enterCode(rhondasPhone, rhonda.email, code);
+  await expect(rhondasPhone.getByRole("heading", { name: "Welcome to Benvolio" })).toBeVisible();
+
+  // Rhonda leaves without giving her name.
+  await rhondasPhone.goto("/");
+  await expect(rhondasPhone.getByText("Signed in.", { exact: true })).toBeVisible();
+  for (const path of ["/start", `/b/${started.id}`]) {
+    await rhondasPhone.goto(path);
+    await expect(rhondasPhone).toHaveURL(`/welcome?next=${encodeURIComponent(path)}`);
+  }
+
+  await rhondasPhone.goto(started.inviteUrl);
+  await expect(rhondasPhone).toHaveURL(`/welcome?next=${encodeURIComponent(invitePath)}`);
+  await rhondasPhone.getByLabel("Your first name").fill(rhonda.firstName);
+  await rhondasPhone.getByRole("button", { name: "Continue" }).click();
+  await expect(rhondasPhone).toHaveURL(invitePath);
   await rhondasPhone.getByRole("button", { name: "Join" }).click();
   await expect(rhondasPhone).toHaveURL(`/b/${started.id}`);
 });

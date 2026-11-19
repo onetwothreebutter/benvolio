@@ -33,11 +33,16 @@ export async function signInHere(page: Page, person: TestPerson) {
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   const { code } = await askForCode(page, person.email);
   await enterCode(page, person.email, code);
-  await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
-  if (new URL(page.url()).pathname === "/welcome") {
-    await page.getByLabel("Your first name").fill(person.firstName);
+  // New people are asked their name; everyone else passes /welcome by.
+  const nameField = page.getByLabel("Your first name");
+  const signedIn = (url: URL) => !["/sign-in", "/welcome"].includes(url.pathname);
+  await expect
+    .poll(async () => signedIn(new URL(page.url())) || (await nameField.isVisible()))
+    .toBe(true);
+  if (await nameField.isVisible()) {
+    await nameField.fill(person.firstName);
     await page.getByRole("button", { name: "Continue" }).click();
-    await page.waitForURL((url) => url.pathname !== "/welcome");
+    await page.waitForURL(signedIn);
   }
 }
 

@@ -62,15 +62,30 @@ test("the emailed link signs in after a tap, and only once", async ({ page }, te
   await expect(formError(page)).toContainText("expired or was already used");
 });
 
-test("a wrong code is refused, and the email can be changed", async ({ page }, testInfo) => {
-  const jane = newPerson("Jane", testInfo);
+test("a wrong code is refused, and a different email can be used", async ({ page }, testInfo) => {
+  const typo = newPerson("Jane", testInfo);
   await page.goto("/sign-in");
-  const { code } = await askForCode(page, jane.email);
-  await enterCode(page, jane.email, code === "000000" ? "111111" : "000000");
+  const { code } = await askForCode(page, typo.email);
+  await enterCode(page, typo.email, "abc");
+  await expect(formError(page)).toHaveText("Enter the code from the email.");
+  await enterCode(page, typo.email, code === "000000" ? "111111" : "000000");
   await expect(formError(page)).toHaveText("That code didn't work. It may have expired.");
 
   await page.getByRole("button", { name: "Use a different email" }).click();
-  await expect(page.getByLabel("Your email")).toBeVisible();
+  const jane = newPerson("Jane", testInfo);
+  await signInHere(page, jane);
+  await expect(page.getByText("Signed in as Jane.")).toBeVisible();
+});
+
+test("a blank name is refused", async ({ page }, testInfo) => {
+  const jane = newPerson("Jane", testInfo);
+  await page.goto("/sign-in");
+  const { code } = await askForCode(page, jane.email);
+  await enterCode(page, jane.email, code);
+  // The browser lets spaces through; the server doesn't.
+  await page.getByLabel("Your first name").fill("   ");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(formError(page)).toHaveText("Please enter your first name.");
 });
 
 test("an address without a domain is refused before any email is sent", async ({ page }) => {

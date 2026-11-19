@@ -14,7 +14,17 @@ export type LocalSupabase = {
 export function localSupabase(): LocalSupabase {
   // Looked up once by the runner; its workers inherit the answer.
   const known = process.env.E2E_LOCAL_SUPABASE;
-  if (known) return JSON.parse(known);
+  const found = known ? (JSON.parse(known) as LocalSupabase) : fromCli();
+  for (const url of [found.url, found.mailpitUrl]) {
+    if (!/^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(url)) {
+      throw new Error(`Refusing to run end-to-end tests against ${url}`);
+    }
+  }
+  process.env.E2E_LOCAL_SUPABASE = JSON.stringify(found);
+  return found;
+}
+
+function fromCli(): LocalSupabase {
   let out: string;
   try {
     out = execFileSync("npx", ["supabase", "status", "-o", "json"], {
@@ -35,11 +45,5 @@ export function localSupabase(): LocalSupabase {
   for (const [name, value] of Object.entries(found)) {
     if (!value) throw new Error(`\`supabase status\` gave no ${name}`);
   }
-  for (const url of [found.url, found.mailpitUrl]) {
-    if (!/^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(url)) {
-      throw new Error(`Refusing to run end-to-end tests against ${url}`);
-    }
-  }
-  process.env.E2E_LOCAL_SUPABASE = JSON.stringify(found);
   return found;
 }

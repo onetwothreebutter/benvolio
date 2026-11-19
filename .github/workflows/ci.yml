@@ -58,7 +58,7 @@ jobs:
       # migrations applied. Only what the app uses is started. It runs in the
       # background while the browser installs.
       - run: |
-          nohup sh -c 'npx supabase start; echo $? > supabase-start.rc' > supabase-start.log 2>&1 &
+          nohup sh -c 'npx supabase start; echo $? > supabase-start.tmp; mv supabase-start.tmp supabase-start.rc' > supabase-start.log 2>&1 &
       - run: npx playwright install --with-deps chromium
       - name: Wait for Supabase
         run: |
