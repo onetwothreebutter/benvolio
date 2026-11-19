@@ -31,9 +31,11 @@ function fromCli(): LocalSupabase {
     out = execFileSync("npx", ["supabase", "status", "-o", "json"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
+      shell: process.platform === "win32", // npx is npx.cmd there.
     });
-  } catch {
-    throw new Error("Local Supabase isn't running. Start it with `npx supabase start`.");
+  } catch (e) {
+    const detail = String((e as { stderr?: string }).stderr || e).trim();
+    throw new Error(`Couldn't read local Supabase's status. Is \`npx supabase start\` running?\n${detail}`);
   }
   // The CLI may print notices before the JSON.
   const status = JSON.parse(out.slice(out.indexOf("{")));

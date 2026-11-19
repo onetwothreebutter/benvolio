@@ -1,4 +1,5 @@
 import { formError } from "./support/screen";
+import { sessionIsLive } from "./support/session";
 import { askForCode, enterCode, newPerson, signIn, signInHere } from "./support/people";
 import { expect, test } from "./support/test";
 
@@ -115,8 +116,11 @@ test("signing out on one phone leaves the others signed in", async ({
   await janesTablet.waitForTimeout(1_100);
   await signIn(janesTablet, jane);
 
+  expect(await sessionIsLive(janesTablet)).toBe(true);
+
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
+  expect(await sessionIsLive(janesTablet)).toBe(true);
   await janesTablet.reload();
   await expect(janesTablet.getByText("Signed in as Jane.")).toBeVisible();
 });

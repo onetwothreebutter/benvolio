@@ -12,7 +12,8 @@ npx playwright install chromium   # once
 npm run e2e                 # starts `next dev` on :3100 for the run
 ```
 
-`npm run e2e -- --ui` opens Playwright's UI; `npm run e2e -- sign-in` runs one file.
+`npm run e2e -- --ui` opens Playwright's UI (its Copy test uses your real
+clipboard there); `npm run e2e -- sign-in` runs one file.
 `CI=1 npm run e2e` builds and tests a production build, as CI does.
 
 The app under test runs on :3100, and Playwright always starts its own server
