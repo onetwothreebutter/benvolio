@@ -30,8 +30,9 @@ export default defineConfig({
   },
   projects: [{ name: "mobile-chromium" }],
   webServer: {
-    // CI builds in an earlier step and tests that; locally, dev mode starts faster.
-    command: process.env.CI ? "npx next start" : "npx next dev",
+    // CI tests a production build; locally, dev mode starts faster. The build
+    // runs here so it bakes in the local Supabase below, never .env.local's.
+    command: process.env.CI ? "npx next build --no-lint && npx next start" : "npx next dev",
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,

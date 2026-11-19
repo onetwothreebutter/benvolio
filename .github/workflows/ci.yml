@@ -38,8 +38,6 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      CI: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -60,11 +58,6 @@ jobs:
       # migrations applied. Only what the app uses is started.
       - run: npx supabase start
       - run: npx playwright install --with-deps chromium
-      # Built against the local Supabase, whose public URL and key are baked in.
-      - run: |
-          eval "$(npx supabase status -o env --override-name api.url=NEXT_PUBLIC_SUPABASE_URL --override-name auth.publishable_key=NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)"
-          export NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-          NEXT_PUBLIC_POSTHOG_KEY= NEXT_PUBLIC_SENTRY_DSN= npx next build --no-lint
       - run: npm run e2e
       - if: failure()
         uses: actions/upload-artifact@v4

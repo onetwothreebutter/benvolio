@@ -1,3 +1,8 @@
+# LOCAL ONLY: for `npx supabase start` and the end-to-end tests (e2e/README.md).
+# Never run `supabase config push` with this file: its site_url, rate limits
+# and email settings are for tests and would break the hosted project.
+# Production settings live in the Supabase dashboard (docs/auth.md).
+
 #:schema https://supabase.com/schemas/config/v1.json
 # For detailed configuration reference documentation, visit:
 # https://supabase.com/docs/guides/local-development/cli/config
@@ -70,7 +75,8 @@ schema_paths = []
 
 [db.seed]
 # If enabled, seeds the database after migrations during a db reset.
-enabled = true
+# Off: each test makes its own data.
+enabled = false
 # Specifies an ordered list of seed files to load during db reset.
 # Supports glob patterns relative to supabase directory: "./seeds/*.sql"
 sql_paths = ["./seed.sql"]
@@ -229,7 +235,7 @@ enabled = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # If enabled, users will need to provide their current password to change their password, unless

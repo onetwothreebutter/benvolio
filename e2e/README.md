@@ -13,7 +13,7 @@ npm run e2e                 # starts `next dev` on :3100 if nothing is running t
 ```
 
 `npm run e2e -- --ui` opens Playwright's UI; `npm run e2e -- sign-in` runs one file.
-CI runs the same suite against a production build (`next build`, then `CI=1`).
+`CI=1 npm run e2e` builds and tests a production build, as CI does.
 
 The app under test runs on :3100, not :3000, so a dev server you have open
 (which talks to production Supabase through `.env.local`) is never reused.
