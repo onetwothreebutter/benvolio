@@ -3,7 +3,10 @@ import { INVITE_GONE, OWN_INVITE } from "@/lib/invites/messages";
 import { formError } from "./support/screen";
 import { newPerson, signIn, startBenvolio } from "./support/people";
 
-test("starting a Benvolio gives an invite link and a page for it", async ({ page }, testInfo) => {
+test("starting a Benvolio gives an invite link and a page for it", async ({
+  page,
+  baseURL,
+}, testInfo) => {
   const jane = newPerson("Jane", testInfo);
   const rhonda = newPerson("Rhonda", testInfo);
   await signIn(page, jane);
@@ -16,7 +19,7 @@ test("starting a Benvolio gives an invite link and a page for it", async ({ page
   await page.getByRole("button", { name: "Start" }).click();
 
   await expect(page.getByRole("heading", { name: "Now invite Rhonda" })).toBeVisible();
-  await expect(page.getByLabel("Invite link")).toHaveValue(/^http:\/\/localhost:3100\/join\/\S+$/);
+  await expect(page.getByLabel("Invite link")).toHaveValue(new RegExp(`^${baseURL}/join/\\S+$`));
 
   await page.getByRole("link", { name: "Go to your Benvolio" }).click();
   await expect(page).toHaveURL(/\/b\/[0-9a-f-]{36}$/);

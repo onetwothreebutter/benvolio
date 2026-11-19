@@ -1,4 +1,5 @@
-import { devices, expect, test as base, type Page } from "@playwright/test";
+import { expect, test as base, type Page } from "@playwright/test";
+import { PHONE } from "./phone";
 
 export { expect };
 
@@ -11,7 +12,7 @@ export const test = base.extend<{ anotherPhone: () => Promise<Page> }>({
   anotherPhone: async ({ browser, baseURL }, provide) => {
     const contexts: Awaited<ReturnType<typeof browser.newContext>>[] = [];
     await provide(async () => {
-      const context = await browser.newContext({ ...devices["Pixel 7"], baseURL });
+      const context = await browser.newContext({ ...PHONE, baseURL });
       contexts.push(context);
       return context.newPage();
     });

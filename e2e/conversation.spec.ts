@@ -1,8 +1,11 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "./support/test";
-import { LAST_SITTING, type Role } from "@/lib/conversation/model";
+import { LAST_SITTING, type NextAction, type Role } from "@/lib/conversation/model";
+import { statusLine } from "@/lib/conversation/status";
 import { joinFromInvite, newPerson, signIn, startBenvolio } from "./support/people";
 import { acceptProposedQuestion, writeSitting } from "./support/sittings";
+import { expect, test } from "./support/test";
+
+const ROLES = ["initiator", "recipient"] as const;
 
 /**
  * A whole Benvolio, from the invite to the finish, checking what each person's
@@ -25,38 +28,44 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
 
   const phones: Record<Role, Page> = { initiator: page, recipient: rhondasPhone };
   const partnerName: Record<Role, string> = { initiator: "Rhonda", recipient: "Jane" };
-  async function expectStatus(role: Role, status: string) {
-    const phone = phones[role];
-    await phone.goto(`/b/${started.id}`);
-    await expect(phone.getByText(status, { exact: true })).toBeVisible();
+  /** Opens each person's page and checks it says what should happen next. */
+  async function expectNext(actions: Partial<Record<Role, NextAction>>) {
+    await Promise.all(
+      Object.entries(actions).map(async ([role, action]) => {
+        const phone = phones[role as Role];
+        await phone.goto(`/b/${started.id}`);
+        const line = statusLine(action, partnerName[role as Role]);
+        await expect(phone.getByText(line, { exact: true })).toBeVisible();
+      }),
+    );
   }
+  const both = (action: NextAction) => ({ initiator: action, recipient: action });
 
   // The question is settled before anyone writes.
-  await expectStatus("initiator", "Rhonda suggested new wording: “Should we get a dog this year?”");
-  await expectStatus("recipient", "Waiting for Jane to agree to your wording.");
+  await expectNext({
+    initiator: { kind: "decide_question", proposed: "Should we get a dog this year?" },
+    recipient: { kind: "wait_for_question" },
+  });
   await acceptProposedQuestion(started.id);
-  for (const role of ["initiator", "recipient"] as const) {
-    await expectStatus(role, "Your turn: write your opening.");
+  await expectNext(both({ kind: "sit", sitting: 0 }));
+  for (const role of ROLES) {
     await expect(phones[role].getByRole("heading", { name: "Should we get a dog this year?" })).toBeVisible();
   }
 
   for (let sitting = 0; sitting <= LAST_SITTING; sitting++) {
     // Take turns going first, so each person waits on the other.
-    const [first, second]: Role[] =
-      sitting % 2 === 0 ? ["initiator", "recipient"] : ["recipient", "initiator"];
+    const [first, second] = sitting % 2 === 0 ? ROLES : ([...ROLES].reverse() as Role[]);
     await test.step(`sitting ${sitting + 1} of ${LAST_SITTING + 1}`, async () => {
       await writeSitting(started.id, first, sitting);
-      await expectStatus(first, `Waiting for ${partnerName[first]} to write theirs.`);
-      await expectStatus(second, turn(sitting));
+      await expectNext({
+        [first]: { kind: "wait", sitting },
+        [second]: { kind: "sit", sitting },
+      });
 
       await writeSitting(started.id, second, sitting);
-      const next = sitting === LAST_SITTING ? "You've finished this Benvolio." : turn(sitting + 1);
-      await expectStatus(first, next);
-      await expectStatus(second, next);
+      await expectNext(
+        both(sitting === LAST_SITTING ? { kind: "finished" } : { kind: "sit", sitting: sitting + 1 }),
+      );
     });
   }
 });
-
-function turn(sitting: number) {
-  return sitting === 0 ? "Your turn: write your opening." : `Your turn: sitting ${sitting + 1} of ${LAST_SITTING + 1}.`;
-}

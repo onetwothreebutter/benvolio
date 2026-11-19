@@ -55,9 +55,16 @@ jobs:
           key: playwright-${{ hashFiles('package-lock.json') }}
       - run: npm ci
       # Supabase (database, auth and the Mailpit inbox) in Docker, with the
-      # migrations applied. Only what the app uses is started.
-      - run: npx supabase start
+      # migrations applied. Only what the app uses is started. It runs in the
+      # background while the browser installs.
+      - run: |
+          nohup npx supabase start > supabase-start.log 2>&1 &
+          echo $! > supabase-start.pid
       - run: npx playwright install --with-deps chromium
+      - name: Wait for Supabase
+        run: |
+          while kill -0 "$(cat supabase-start.pid)" 2> /dev/null; do sleep 2; done
+          npx supabase status > /dev/null || { cat supabase-start.log; exit 1; }
       - run: npm run e2e
       - if: failure()
         uses: actions/upload-artifact@v4

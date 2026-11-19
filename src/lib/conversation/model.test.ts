@@ -18,33 +18,13 @@ import {
   type Submission,
   type Tags,
 } from "./model";
+import { validSitting } from "@/test/sittings";
 
 const three = (prefix: string): Items => [`${prefix} 1`, `${prefix} 2`, `${prefix} 3`];
 const noTags: Tags = [[], [], []];
 
-/** A valid submission for each sitting. */
-function sittingFor(sitting: number, who: string): Submission {
-  switch (sitting) {
-    case 0:
-      return { stance: `${who} stance`, write: three(`${who} reason`) };
-    case 1:
-      return { respond: { kind: "rephrase", texts: three(`${who} rephrase`) }, write: three(`${who} question`) };
-    case 2:
-      return {
-        respond: { kind: "answer", texts: three(`${who} answer`), tags: [["hopeful"], [], ["sad", "relieved"]] },
-        write: three(`${who} share`),
-      };
-    case 3:
-      return { respond: { kind: "react", tags: noTags }, write: three(`${who} agree`) };
-    case 4:
-      return { respond: { kind: "agree", agree: [true, false, true], tags: noTags }, write: three(`${who} compromise`) };
-    default:
-      return { respond: { kind: "rank", ranks: [2, 1, 3] } };
-  }
-}
-
 function sit(c: Conversation, role: Role, sitting: number) {
-  return submit(c, role, sitting, sittingFor(sitting, role));
+  return submit(c, role, sitting, validSitting(sitting, role));
 }
 
 function bothThrough(c: Conversation, lastSitting: number) {
@@ -148,13 +128,13 @@ describe("taking turns", () => {
     let c = join(started());
     c = sit(c, "initiator", 0);
     expect(isRevealed(c, 0)).toBe(false);
-    expect(visibleSubmissions(c, 0, "initiator")).toEqual({ mine: sittingFor(0, "initiator"), partner: undefined });
+    expect(visibleSubmissions(c, 0, "initiator")).toEqual({ mine: validSitting(0, "initiator"), partner: undefined });
     expect(visibleSubmissions(c, 0, "recipient")).toEqual({ mine: undefined, partner: undefined });
     expect(nextAction(c, "initiator")).toEqual({ kind: "wait", sitting: 0 });
 
     c = sit(c, "recipient", 0);
     expect(isRevealed(c, 0)).toBe(true);
-    expect(visibleSubmissions(c, 0, "recipient").partner).toEqual(sittingFor(0, "initiator"));
+    expect(visibleSubmissions(c, 0, "recipient").partner).toEqual(validSitting(0, "initiator"));
     expect(nextAction(c, "initiator")).toEqual({ kind: "sit", sitting: 1 });
   });
 
@@ -197,9 +177,9 @@ describe("taking turns", () => {
 
 describe("parseSubmission", () => {
   it.each([0, 1, 2, 3, 4, 5])("accepts a complete submission for sitting %i", (sitting) => {
-    expect(parseSubmission(sitting, sittingFor(sitting, "x"))).toEqual({
+    expect(parseSubmission(sitting, validSitting(sitting, "x"))).toEqual({
       ok: true,
-      submission: sittingFor(sitting, "x"),
+      submission: validSitting(sitting, "x"),
     });
   });
 
@@ -222,7 +202,7 @@ describe("parseSubmission", () => {
     ["a blank reason", 0, { stance: "yes", write: ["a", "  ", "c"] }, "write"],
     ["two reasons", 0, { stance: "yes", write: ["a", "b"] }, "write"],
     ["an over-long item", 0, { stance: "yes", write: ["a", "b", "c".repeat(2001)] }, "write"],
-    ["a stance after sitting 0", 1, { ...sittingFor(1, "x"), stance: "late" }, "stance"],
+    ["a stance after sitting 0", 1, { ...validSitting(1, "x"), stance: "late" }, "stance"],
     ["the wrong response kind", 1, { respond: { kind: "react", tags: noTags }, write: three("q") }, "respond"],
     ["an extra response field", 3, { respond: { kind: "react", tags: noTags, texts: three("x") }, write: three("a") }, "respond"],
     ["a badly formed tag", 2, { respond: { kind: "answer", texts: three("a"), tags: [["#Sad face"], [], []] }, write: three("s") }, "respond"],
@@ -232,7 +212,7 @@ describe("parseSubmission", () => {
     ["a repeated rank", 5, { respond: { kind: "rank", ranks: [1, 1, 3] } }, "respond"],
     ["two ranks", 5, { respond: { kind: "rank", ranks: [1, 2] } }, "respond"],
     ["ranks as strings", 5, { respond: { kind: "rank", ranks: ["1", "2", "3"] } }, "respond"],
-    ["writing in the last sitting", 5, { ...sittingFor(5, "x"), write: three("extra") }, "write"],
+    ["writing in the last sitting", 5, { ...validSitting(5, "x"), write: three("extra") }, "write"],
   ])("rejects %s", (_label, sitting, input, invalid) => {
     expect(parseSubmission(sitting, input)).toEqual({ ok: false, invalid });
   });
