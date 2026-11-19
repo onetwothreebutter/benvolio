@@ -12,17 +12,27 @@ export function newPerson(firstName: string, testInfo: TestInfo): TestPerson {
   return { email: `${firstName.toLowerCase()}-${unique}@example.com`, firstName };
 }
 
+/** Asks for a sign-in email from the sign-in form, and returns its code and link. */
+export async function askForCode(page: Page, email: string) {
+  await page.getByLabel("Your email").fill(email);
+  await page.getByRole("button", { name: "Email me a code" }).click();
+  return takeSignInEmail(email);
+}
+
+/** Types a code into the sign-in form's second step. */
+export async function enterCode(page: Page, email: string, code: string) {
+  await page.getByLabel(`The code we sent to ${email}`).fill(code);
+  await page.getByRole("button", { name: "Sign in" }).click();
+}
+
 /**
  * Signs in with an emailed code from the sign-in form the page is showing, and
  * gives a first name if the app asks for one (new people only).
  */
 export async function signInHere(page: Page, person: TestPerson) {
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
-  await page.getByLabel("Your email").fill(person.email);
-  await page.getByRole("button", { name: "Email me a code" }).click();
-  const { code } = await takeSignInEmail(person.email);
-  await page.getByLabel(`The code we sent to ${person.email}`).fill(code);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  const { code } = await askForCode(page, person.email);
+  await enterCode(page, person.email, code);
   await page.waitForURL((url) => !url.pathname.startsWith("/sign-in"));
   if (new URL(page.url()).pathname === "/welcome") {
     await page.getByLabel("Your first name").fill(person.firstName);
@@ -55,4 +65,21 @@ export async function startBenvolio(
   const href = await page.getByRole("link", { name: "Go to your Benvolio" }).getAttribute("href");
   const id = href!.replace("/b/", "");
   return { id, inviteUrl, question };
+}
+
+/**
+ * Joins from an invite link as someone signed out, signing in on the way,
+ * optionally suggesting new wording for the question.
+ */
+export async function joinFromInvite(
+  page: Page,
+  inviteUrl: string,
+  person: TestPerson,
+  rewording?: string,
+) {
+  await page.goto(inviteUrl);
+  await page.getByRole("link", { name: "Sign in to join" }).click();
+  await signInHere(page, person);
+  if (rewording) await page.getByLabel("The question").fill(rewording);
+  await page.getByRole("button", { name: "Join" }).click();
 }

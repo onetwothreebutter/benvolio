@@ -9,14 +9,14 @@ Supabase that isn't on localhost, and it blanks the PostHog and Sentry keys.
 ```sh
 npx supabase start          # Docker: database with the migrations, auth, and a Mailpit inbox
 npx playwright install chromium   # once
-npm run e2e                 # starts `next dev` on :3000 if nothing is running there
+npm run e2e                 # starts `next dev` on :3100 if nothing is running there
 ```
 
 `npm run e2e -- --ui` opens Playwright's UI; `npm run e2e -- sign-in` runs one file.
-CI runs the same suite against a production build (`CI=1`).
+CI runs the same suite against a production build (`next build`, then `CI=1`).
 
-If a dev server is already running on :3000 with `.env.local` pointing at the
-real Supabase, stop it first: the tests reuse whatever is on that port.
+The app under test runs on :3100, not :3000, so a dev server you have open
+(which talks to production Supabase through `.env.local`) is never reused.
 
 ## How sign-in works in tests
 

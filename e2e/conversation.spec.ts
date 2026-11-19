@@ -1,7 +1,7 @@
-import { expect, test, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "./support/test";
 import { LAST_SITTING, type Role } from "@/lib/conversation/model";
-import { newPerson, signIn, signInHere, startBenvolio } from "./support/people";
-import { anotherPhone } from "./support/phones";
+import { joinFromInvite, newPerson, signIn, startBenvolio } from "./support/people";
 import { acceptProposedQuestion, writeSitting } from "./support/sittings";
 
 /**
@@ -9,17 +9,18 @@ import { acceptProposedQuestion, writeSitting } from "./support/sittings";
  * page tells them at every turn. The writing itself goes straight into the
  * database (see support/sittings.ts) until the writing screens exist.
  */
-test("two people take turns through a whole Benvolio", async ({ page, browser }, testInfo) => {
+test("two people take turns through a whole Benvolio", async ({ page, anotherPhone }, testInfo) => {
   test.setTimeout(180_000);
   await signIn(page, newPerson("Jane", testInfo));
   const started = await startBenvolio(page, newPerson("Rhonda", testInfo), "Should we get a dog?");
 
-  const rhondasPhone = await anotherPhone(browser, testInfo);
-  await rhondasPhone.goto(started.inviteUrl);
-  await rhondasPhone.getByRole("link", { name: "Sign in to join" }).click();
-  await signInHere(rhondasPhone, newPerson("Rhonda", testInfo));
-  await rhondasPhone.getByLabel("The question").fill("Should we get a dog this year?");
-  await rhondasPhone.getByRole("button", { name: "Join" }).click();
+  const rhondasPhone = await anotherPhone();
+  await joinFromInvite(
+    rhondasPhone,
+    started.inviteUrl,
+    newPerson("Rhonda", testInfo),
+    "Should we get a dog this year?",
+  );
   await expect(rhondasPhone).toHaveURL(`/b/${started.id}`);
 
   const phones: Record<Role, Page> = { initiator: page, recipient: rhondasPhone };
@@ -57,5 +58,5 @@ test("two people take turns through a whole Benvolio", async ({ page, browser },
 });
 
 function turn(sitting: number) {
-  return sitting === 0 ? "Your turn: write your opening." : `Your turn: sitting ${sitting + 1} of 6.`;
+  return sitting === 0 ? "Your turn: write your opening." : `Your turn: sitting ${sitting + 1} of ${LAST_SITTING + 1}.`;
 }

@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { INVITE_GONE, OWN_INVITE } from "@/lib/invites/messages";
+import { formError } from "./support/screen";
 import { newPerson, signIn, startBenvolio } from "./support/people";
 
 test("starting a Benvolio gives an invite link and a page for it", async ({ page }, testInfo) => {
@@ -14,7 +16,7 @@ test("starting a Benvolio gives an invite link and a page for it", async ({ page
   await page.getByRole("button", { name: "Start" }).click();
 
   await expect(page.getByRole("heading", { name: "Now invite Rhonda" })).toBeVisible();
-  await expect(page.getByLabel("Invite link")).toHaveValue(/^http:\/\/localhost:3000\/join\/\S+$/);
+  await expect(page.getByLabel("Invite link")).toHaveValue(/^http:\/\/localhost:3100\/join\/\S+$/);
 
   await page.getByRole("link", { name: "Go to your Benvolio" }).click();
   await expect(page).toHaveURL(/\/b\/[0-9a-f-]{36}$/);
@@ -39,7 +41,7 @@ test("the start form explains mistakes and keeps what was typed", async ({ page 
   await page.getByLabel("Every week").check();
   await page.getByRole("button", { name: "Start" }).click();
 
-  await expect(page.getByRole("main").getByRole("alert")).toHaveText(
+  await expect(formError(page)).toHaveText(
     "That's your own email. Enter the email of the person you're inviting.",
   );
   await expect(page.getByLabel("What would you like to talk about?")).toHaveValue("Should we get a dog?");
@@ -59,8 +61,8 @@ test("a new invite link replaces the old one", async ({ page }, testInfo) => {
   expect(renewed).not.toBe(started.inviteUrl);
 
   await page.goto(started.inviteUrl);
-  await expect(page.getByRole("heading", { name: "This invite has expired or was already used." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: INVITE_GONE })).toBeVisible();
   await page.goto(renewed);
   // Still Jane's own invite, but alive.
-  await expect(page.getByRole("heading", { name: /^This is your own invite/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: OWN_INVITE })).toBeVisible();
 });

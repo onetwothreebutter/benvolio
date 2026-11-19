@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { takeSignInEmail } from "./support/mail";
-import { newPerson, signIn, signInHere } from "./support/people";
+import { formError } from "./support/screen";
+import { askForCode, enterCode, newPerson, signIn, signInHere } from "./support/people";
 
 test("a new person signs in with a code, gives their name, and can sign out", async ({
   page,
@@ -9,11 +9,8 @@ test("a new person signs in with a code, gives their name, and can sign out", as
   await page.goto("/");
   await page.getByRole("link", { name: "Sign in" }).click();
 
-  await page.getByLabel("Your email").fill(jane.email);
-  await page.getByRole("button", { name: "Email me a code" }).click();
-  const { code } = await takeSignInEmail(jane.email);
-  await page.getByLabel(`The code we sent to ${jane.email}`).fill(code);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  const { code } = await askForCode(page, jane.email);
+  await enterCode(page, jane.email, code);
 
   await expect(page.getByRole("heading", { name: "Welcome to Benvolio" })).toBeVisible();
   await page.getByLabel("Your first name").fill(jane.firstName);
@@ -37,11 +34,8 @@ test("someone who has signed in before skips the name question", async ({ page }
   // (1s in supabase/config.toml; 60s in production).
   await page.waitForTimeout(1_100);
   await page.goto("/sign-in");
-  await page.getByLabel("Your email").fill(jane.email);
-  await page.getByRole("button", { name: "Email me a code" }).click();
-  const { code } = await takeSignInEmail(jane.email);
-  await page.getByLabel(`The code we sent to ${jane.email}`).fill(code);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  const { code } = await askForCode(page, jane.email);
+  await enterCode(page, jane.email, code);
 
   await expect(page).toHaveURL("/");
   await expect(page.getByText("Signed in as Jane.")).toBeVisible();
@@ -50,9 +44,7 @@ test("someone who has signed in before skips the name question", async ({ page }
 test("the emailed link signs in after a tap, and only once", async ({ page }, testInfo) => {
   const jane = newPerson("Jane", testInfo);
   await page.goto("/sign-in");
-  await page.getByLabel("Your email").fill(jane.email);
-  await page.getByRole("button", { name: "Email me a code" }).click();
-  const { link } = await takeSignInEmail(jane.email);
+  const { link } = await askForCode(page, jane.email);
 
   // Opening the link alone doesn't sign in, so email scanners can't use it up.
   await page.goto(link);
@@ -67,20 +59,15 @@ test("the emailed link signs in after a tap, and only once", async ({ page }, te
   await page.goto(link);
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page).toHaveURL(/\/sign-in\?.*error=link/);
-  await expect(page.getByRole("main").getByRole("alert")).toContainText("expired or was already used");
+  await expect(formError(page)).toContainText("expired or was already used");
 });
 
 test("a wrong code is refused, and the email can be changed", async ({ page }, testInfo) => {
   const jane = newPerson("Jane", testInfo);
   await page.goto("/sign-in");
-  await page.getByLabel("Your email").fill(jane.email);
-  await page.getByRole("button", { name: "Email me a code" }).click();
-  const { code } = await takeSignInEmail(jane.email);
-
-  const wrong = code === "000000" ? "111111" : "000000";
-  await page.getByLabel(`The code we sent to ${jane.email}`).fill(wrong);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByRole("main").getByRole("alert")).toHaveText("That code didn't work. It may have expired.");
+  const { code } = await askForCode(page, jane.email);
+  await enterCode(page, jane.email, code === "000000" ? "111111" : "000000");
+  await expect(formError(page)).toHaveText("That code didn't work. It may have expired.");
 
   await page.getByRole("button", { name: "Use a different email" }).click();
   await expect(page.getByLabel("Your email")).toBeVisible();
@@ -91,7 +78,7 @@ test("an address without a domain is refused before any email is sent", async ({
   // The browser accepts this; the server doesn't.
   await page.getByLabel("Your email").fill("jane@localhost");
   await page.getByRole("button", { name: "Email me a code" }).click();
-  await expect(page.getByRole("main").getByRole("alert")).toHaveText("That doesn't look like an email address.");
+  await expect(formError(page)).toHaveText("That doesn't look like an email address.");
 });
 
 test("signing in returns to the page that asked for it", async ({ page }, testInfo) => {

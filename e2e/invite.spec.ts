@@ -1,13 +1,12 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/test";
+import { INVITE_GONE, OWN_INVITE } from "@/lib/invites/messages";
 import { adminDatabase } from "./support/database";
-import { newPerson, signIn, signInHere, startBenvolio } from "./support/people";
-import { anotherPhone } from "./support/phones";
-
-const INVITE_GONE = "This invite has expired or was already used.";
+import { NOT_FOUND } from "./support/screen";
+import { joinFromInvite, newPerson, signIn, signInHere, startBenvolio } from "./support/people";
 
 test("the partner joins from the invite link and both can see the Benvolio", async ({
   page,
-  browser,
+  anotherPhone,
 }, testInfo) => {
   const jane = newPerson("Jane", testInfo);
   await signIn(page, jane);
@@ -15,7 +14,7 @@ test("the partner joins from the invite link and both can see the Benvolio", asy
 
   // Anyone with the link can join, whatever email they sign in with.
   const rhonda = newPerson("Rhonda", testInfo);
-  const rhondasPhone = await anotherPhone(browser, testInfo);
+  const rhondasPhone = await anotherPhone();
   await rhondasPhone.goto(started.inviteUrl);
   await expect(rhondasPhone.getByRole("heading", { name: "Jane would like to talk with you" })).toBeVisible();
   await expect(rhondasPhone.getByText("Should we get a dog?")).toBeVisible();
@@ -41,35 +40,31 @@ test("the partner joins from the invite link and both can see the Benvolio", asy
   await expect(rhondasPhone.getByRole("link", { name: "Should we get a dog?" })).toBeVisible();
 
   // The link works once.
-  const latecomer = await anotherPhone(browser, testInfo);
+  const latecomer = await anotherPhone();
   await latecomer.goto(started.inviteUrl);
   await expect(latecomer.getByRole("heading", { name: INVITE_GONE })).toBeVisible();
 });
 
 test("a partner who rewords the question waits for the initiator to agree", async ({
   page,
-  browser,
+  anotherPhone,
 }, testInfo) => {
   await signIn(page, newPerson("Jane", testInfo));
   const started = await startBenvolio(page, newPerson("Rhonda", testInfo), "Should we get a dog?");
 
-  const rhondasPhone = await anotherPhone(browser, testInfo);
-  await rhondasPhone.goto(started.inviteUrl);
-  await rhondasPhone.getByRole("link", { name: "Sign in to join" }).click();
-  await signInHere(rhondasPhone, newPerson("Rhonda", testInfo));
-  await rhondasPhone.getByLabel("The question").fill("Should we get a cat?");
-  await rhondasPhone.getByRole("button", { name: "Join" }).click();
+  const rhondasPhone = await anotherPhone();
+  await joinFromInvite(rhondasPhone, started.inviteUrl, newPerson("Rhonda", testInfo), "Should we get a cat?");
 
   await expect(rhondasPhone.getByText("Waiting for Jane to agree to your wording.")).toBeVisible();
   await page.goto(`/b/${started.id}`);
   await expect(page.getByText("Rhonda suggested new wording: “Should we get a cat?”")).toBeVisible();
 });
 
-test("someone already signed in joins straight from the link", async ({ page, browser }, testInfo) => {
+test("someone already signed in joins straight from the link", async ({ page, anotherPhone }, testInfo) => {
   await signIn(page, newPerson("Jane", testInfo));
   const started = await startBenvolio(page, newPerson("Rhonda", testInfo));
 
-  const rhondasPhone = await anotherPhone(browser, testInfo);
+  const rhondasPhone = await anotherPhone();
   await signIn(rhondasPhone, newPerson("Rhonda", testInfo));
   await rhondasPhone.goto(started.inviteUrl);
   await rhondasPhone.getByRole("button", { name: "Join" }).click();
@@ -80,11 +75,11 @@ test("the initiator opening their own link is told to send it on", async ({ page
   await signIn(page, newPerson("Jane", testInfo));
   const started = await startBenvolio(page, newPerson("Rhonda", testInfo));
   await page.goto(started.inviteUrl);
-  await expect(page.getByRole("heading", { name: /^This is your own invite/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: OWN_INVITE })).toBeVisible();
   await expect(page.getByRole("button", { name: "Join" })).toHaveCount(0);
 });
 
-test("an expired invite can't be used", async ({ page, browser }, testInfo) => {
+test("an expired invite can't be used", async ({ page, anotherPhone }, testInfo) => {
   await signIn(page, newPerson("Jane", testInfo));
   const started = await startBenvolio(page, newPerson("Rhonda", testInfo));
   const { error } = await adminDatabase()
@@ -93,7 +88,7 @@ test("an expired invite can't be used", async ({ page, browser }, testInfo) => {
     .eq("benvolio_id", started.id);
   expect(error).toBeNull();
 
-  const rhondasPhone = await anotherPhone(browser, testInfo);
+  const rhondasPhone = await anotherPhone();
   await rhondasPhone.goto(started.inviteUrl);
   await expect(rhondasPhone.getByRole("heading", { name: INVITE_GONE })).toBeVisible();
   await expect(rhondasPhone.getByText("Ask the person who sent it for a new one.")).toBeVisible();
@@ -104,13 +99,13 @@ test("a made-up invite link explains itself", async ({ page }) => {
   await expect(page.getByRole("heading", { name: INVITE_GONE })).toBeVisible();
 });
 
-test("only the two people in a Benvolio can open it", async ({ page, browser }, testInfo) => {
+test("only the two people in a Benvolio can open it", async ({ page, anotherPhone }, testInfo) => {
   await signIn(page, newPerson("Jane", testInfo));
   const started = await startBenvolio(page, newPerson("Rhonda", testInfo));
 
-  const stranger = await anotherPhone(browser, testInfo);
+  const stranger = await anotherPhone();
   await signIn(stranger, newPerson("Ben", testInfo));
   await stranger.goto(`/b/${started.id}`);
-  await expect(stranger.getByRole("heading", { name: "We couldn't find that page" })).toBeVisible();
+  await expect(stranger.getByRole("heading", { name: NOT_FOUND })).toBeVisible();
   await expect(stranger.getByText(started.question)).toHaveCount(0);
 });

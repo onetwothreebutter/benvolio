@@ -7,14 +7,14 @@ export type LocalSupabase = {
   mailpitUrl: string;
 };
 
-let cached: LocalSupabase | undefined;
-
 /**
  * The addresses and keys of the Supabase that `npx supabase start` is running.
  * Refuses anything but localhost: the tests create accounts and Benvolios.
  */
 export function localSupabase(): LocalSupabase {
-  if (cached) return cached;
+  // Looked up once by the runner; its workers inherit the answer.
+  const known = process.env.E2E_LOCAL_SUPABASE;
+  if (known) return JSON.parse(known);
   let out: string;
   try {
     out = execFileSync("npx", ["supabase", "status", "-o", "json"], {
@@ -38,6 +38,6 @@ export function localSupabase(): LocalSupabase {
   if (!/^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(found.url)) {
     throw new Error(`Refusing to run end-to-end tests against ${found.url}`);
   }
-  cached = found;
+  process.env.E2E_LOCAL_SUPABASE = JSON.stringify(found);
   return found;
 }

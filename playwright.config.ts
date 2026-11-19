@@ -6,7 +6,9 @@ import { localSupabase } from "./e2e/support/local-supabase";
  * start`), reading sign-in emails from its Mailpit inbox. See e2e/README.md.
  */
 const supabase = localSupabase();
-const PORT = 3000; // Supabase's site_url, which the emailed sign-in link is built from.
+// Not 3000, so the tests never reuse a dev server that talks to production
+// Supabase. Matches site_url in supabase/config.toml, which emailed links use.
+const PORT = 3100;
 const baseURL = `http://localhost:${PORT}`;
 
 export default defineConfig({
@@ -28,8 +30,8 @@ export default defineConfig({
   },
   projects: [{ name: "mobile-chromium" }],
   webServer: {
-    // CI tests the production build; locally, dev mode starts faster.
-    command: process.env.CI ? "npx next build --no-lint && npx next start" : "npx next dev",
+    // CI builds in an earlier step and tests that; locally, dev mode starts faster.
+    command: process.env.CI ? "npx next start" : "npx next dev",
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,
