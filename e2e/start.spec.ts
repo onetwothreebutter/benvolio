@@ -1,7 +1,8 @@
-import { expect, test } from "@playwright/test";
+import { statusLine } from "@/lib/conversation/status";
 import { INVITE_GONE, OWN_INVITE } from "@/lib/invites/messages";
 import { formError } from "./support/screen";
 import { newPerson, signIn, startBenvolio } from "./support/people";
+import { expect, test } from "./support/test";
 
 test("starting a Benvolio gives an invite link and a page for it", async ({
   page,
@@ -26,7 +27,7 @@ test("starting a Benvolio gives an invite link and a page for it", async ({
   await expect(page.getByRole("heading", { name: "Should we move closer to family?" })).toBeVisible();
   await expect(page.getByText("With Rhonda")).toBeVisible();
   await expect(page.getByText("Rhonda hasn't accepted your invite yet.")).toBeVisible();
-  await expect(page.getByText("Your turn: write your opening.")).toBeVisible();
+  await expect(page.getByText(statusLine({ kind: "sit", sitting: 0 }, ""))).toBeVisible();
 
   await page.goto("/");
   await page.getByRole("link", { name: "Should we move closer to family?" }).click();

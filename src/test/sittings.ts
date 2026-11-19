@@ -1,7 +1,8 @@
 import { LAST_SITTING, type Items, type Submission, type Tags } from "@/lib/conversation/model";
 import { ROUNDS } from "@/lib/conversation/rounds";
 
-const three = (prefix: string): Items => [`${prefix} 1`, `${prefix} 2`, `${prefix} 3`];
+/** Three numbered items, as every round writes. */
+export const three = (prefix: string): Items => [`${prefix} 1`, `${prefix} 2`, `${prefix} 3`];
 const tags: Tags = [["hopeful"], [], ["sad", "relieved"]];
 
 /** A valid submission for each sitting, its text marked with `who`. */

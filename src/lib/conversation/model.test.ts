@@ -13,14 +13,12 @@ import {
   parseSubmission,
   visibleSubmissions,
   type Conversation,
-  type Items,
   type Role,
   type Submission,
   type Tags,
 } from "./model";
-import { validSitting } from "@/test/sittings";
+import { three, validSitting } from "@/test/sittings";
 
-const three = (prefix: string): Items => [`${prefix} 1`, `${prefix} 2`, `${prefix} 3`];
 const noTags: Tags = [[], [], []];
 
 function sit(c: Conversation, role: Role, sitting: number) {

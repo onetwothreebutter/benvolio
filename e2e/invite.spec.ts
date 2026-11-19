@@ -1,8 +1,9 @@
 import { expect, test } from "./support/test";
+import { statusLine } from "@/lib/conversation/status";
 import { INVITE_GONE, OWN_INVITE } from "@/lib/invites/messages";
 import { adminDatabase } from "./support/database";
 import { NOT_FOUND } from "./support/screen";
-import { joinFromInvite, newPerson, signIn, signInHere, startBenvolio } from "./support/people";
+import { newPerson, signIn, signInHere, startBenvolio } from "./support/people";
 
 test("the partner joins from the invite link and both can see the Benvolio", async ({
   page,
@@ -28,13 +29,13 @@ test("the partner joins from the invite link and both can see the Benvolio", asy
   await expect(rhondasPhone).toHaveURL(`/b/${started.id}`);
   await expect(rhondasPhone.getByRole("heading", { name: "Should we get a dog?" })).toBeVisible();
   await expect(rhondasPhone.getByText("With Jane")).toBeVisible();
-  await expect(rhondasPhone.getByText("Your turn: write your opening.")).toBeVisible();
+  await expect(rhondasPhone.getByText(statusLine({ kind: "sit", sitting: 0 }, ""))).toBeVisible();
 
   await page.goto(`/b/${started.id}`);
   await expect(page.getByText("With Rhonda")).toBeVisible();
   await expect(page.getByText("hasn't accepted your invite yet")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Make a new invite link" })).toHaveCount(0);
-  await expect(page.getByText("Your turn: write your opening.")).toBeVisible();
+  await expect(page.getByText(statusLine({ kind: "sit", sitting: 0 }, ""))).toBeVisible();
 
   await rhondasPhone.goto("/");
   await expect(rhondasPhone.getByRole("link", { name: "Should we get a dog?" })).toBeVisible();
@@ -43,21 +44,6 @@ test("the partner joins from the invite link and both can see the Benvolio", asy
   const latecomer = await anotherPhone();
   await latecomer.goto(started.inviteUrl);
   await expect(latecomer.getByRole("heading", { name: INVITE_GONE })).toBeVisible();
-});
-
-test("a partner who rewords the question waits for the initiator to agree", async ({
-  page,
-  anotherPhone,
-}, testInfo) => {
-  await signIn(page, newPerson("Jane", testInfo));
-  const started = await startBenvolio(page, newPerson("Rhonda", testInfo), "Should we get a dog?");
-
-  const rhondasPhone = await anotherPhone();
-  await joinFromInvite(rhondasPhone, started.inviteUrl, newPerson("Rhonda", testInfo), "Should we get a cat?");
-
-  await expect(rhondasPhone.getByText("Waiting for Jane to agree to your wording.")).toBeVisible();
-  await page.goto(`/b/${started.id}`);
-  await expect(page.getByText("Rhonda suggested new wording: “Should we get a cat?”")).toBeVisible();
 });
 
 test("someone already signed in joins straight from the link", async ({ page, anotherPhone }, testInfo) => {

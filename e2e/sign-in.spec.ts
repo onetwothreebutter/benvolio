@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
 import { formError } from "./support/screen";
 import { askForCode, enterCode, newPerson, signIn, signInHere } from "./support/people";
+import { expect, test } from "./support/test";
 
 test("a new person signs in with a code, gives their name, and can sign out", async ({
   page,

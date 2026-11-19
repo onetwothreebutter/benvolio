@@ -1,11 +1,9 @@
 import type { Page } from "@playwright/test";
-import { LAST_SITTING, type NextAction, type Role } from "@/lib/conversation/model";
+import { LAST_SITTING, partnerOf, type NextAction, type Role } from "@/lib/conversation/model";
 import { statusLine } from "@/lib/conversation/status";
 import { joinFromInvite, newPerson, signIn, startBenvolio } from "./support/people";
 import { acceptProposedQuestion, writeSitting } from "./support/sittings";
 import { expect, test } from "./support/test";
-
-const ROLES = ["initiator", "recipient"] as const;
 
 /**
  * A whole Benvolio, from the invite to the finish, checking what each person's
@@ -48,13 +46,14 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
   });
   await acceptProposedQuestion(started.id);
   await expectNext(both({ kind: "sit", sitting: 0 }));
-  for (const role of ROLES) {
-    await expect(phones[role].getByRole("heading", { name: "Should we get a dog this year?" })).toBeVisible();
+  for (const phone of Object.values(phones)) {
+    await expect(phone.getByRole("heading", { name: "Should we get a dog this year?" })).toBeVisible();
   }
 
   for (let sitting = 0; sitting <= LAST_SITTING; sitting++) {
     // Take turns going first, so each person waits on the other.
-    const [first, second] = sitting % 2 === 0 ? ROLES : ([...ROLES].reverse() as Role[]);
+    const first: Role = sitting % 2 === 0 ? "initiator" : "recipient";
+    const second = partnerOf(first);
     await test.step(`sitting ${sitting + 1} of ${LAST_SITTING + 1}`, async () => {
       await writeSitting(started.id, first, sitting);
       await expectNext({

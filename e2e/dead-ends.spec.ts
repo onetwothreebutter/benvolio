@@ -1,7 +1,7 @@
-import { expect, test } from "@playwright/test";
 import { PRODUCT_NAME, TAGLINE } from "@/lib/copy";
 import { formError, NOT_FOUND } from "./support/screen";
 import { newPerson, signIn, signInHere } from "./support/people";
+import { expect, test } from "./support/test";
 
 test("the home page invites people to sign in", async ({ page }) => {
   await page.goto("/");

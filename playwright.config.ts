@@ -24,7 +24,7 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   use: {
     baseURL,
-    trace: "retain-on-failure",
+    trace: process.env.CI ? "on-first-retry" : "retain-on-failure",
     ...PHONE,
     // For machines with a Chromium already installed instead of `npx playwright install`.
     launchOptions: { executablePath: process.env.E2E_CHROMIUM_PATH || undefined },
