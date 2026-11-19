@@ -37,9 +37,11 @@ export default async function Home() {
           </form>
         </div>
       ) : (
-        <Link href="/sign-in" className={form.button}>
-          Sign in
-        </Link>
+        <div className={form.form}>
+          <Link href="/sign-in" className={form.button}>
+            Sign in
+          </Link>
+        </div>
       )}
     </main>
   );

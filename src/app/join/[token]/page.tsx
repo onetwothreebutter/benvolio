@@ -41,12 +41,14 @@ async function body(token: string, invite: OpenInvite | null, userId?: string) {
     return (
       <>
         {intro}
-        <p>
-          <strong>{invite.question}</strong>
-        </p>
-        <Link href={withNext("/sign-in", here)} className={styles.button}>
-          Sign in to join
-        </Link>
+        <div className={styles.form}>
+          <p>
+            <strong>{invite.question}</strong>
+          </p>
+          <Link href={withNext("/sign-in", here)} className={styles.button}>
+            Sign in to join
+          </Link>
+        </div>
       </>
     );
   }

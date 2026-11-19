@@ -12,6 +12,7 @@ export function StartForm() {
   const [state, action, pending] = useActionState<StartState, FormData>(startBenvolio, {});
   if (state.done) return <Invite {...state} />;
   const values = state.values;
+  const pace = values?.pace ?? "daily";
 
   return (
     <form action={action} className={styles.form}>
@@ -59,10 +60,10 @@ export function StartForm() {
       <fieldset className={styles.form}>
         <legend className={styles.label}>How often should we nudge you both?</legend>
         <label>
-          <input type="radio" name="pace" value="daily" defaultChecked={values?.pace !== "weekly"} /> Every day
+          <input type="radio" name="pace" value="daily" defaultChecked={pace === "daily"} /> Every day
         </label>
         <label>
-          <input type="radio" name="pace" value="weekly" defaultChecked={values?.pace === "weekly"} /> Every week
+          <input type="radio" name="pace" value="weekly" defaultChecked={pace === "weekly"} /> Every week
         </label>
       </fieldset>
 

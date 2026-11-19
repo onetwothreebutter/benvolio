@@ -2,6 +2,7 @@
 
 import { cleanQuestion, TurnError } from "@/lib/conversation/model";
 import { normalizeEmail } from "@/lib/auth/email";
+import type { Pace } from "@/lib/analytics/events";
 import { requirePerson } from "@/lib/auth/session";
 import { newInviteToken } from "@/lib/invites/token";
 import { cleanFirstName } from "@/lib/people/first-name";
@@ -13,7 +14,7 @@ export type StartValues = {
   question: string;
   partnerName: string;
   partnerEmail: string;
-  pace: "daily" | "weekly";
+  pace: Pace;
 };
 
 export type StartState =
