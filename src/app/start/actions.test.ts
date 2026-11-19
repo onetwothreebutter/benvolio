@@ -51,10 +51,25 @@ describe("startBenvolio", () => {
     ["no name", { partner_name: "" }],
     ["a bad email", { partner_email: "rhonda" }],
     ["your own email", { partner_email: "JANE@example.com" }],
-  ])("asks again for %s", async (_name, change) => {
-    const state = await startBenvolio({}, formData({ ...valid, ...change }));
-    expect(state).toEqual({ error: expect.any(String) });
+  ])("asks again for %s, keeping what was typed", async (_name, change) => {
+    const typed = { ...valid, ...change };
+    const state = await startBenvolio({}, formData(typed));
+    expect(state).toEqual({
+      error: expect.any(String),
+      values: {
+        question: typed.question,
+        partnerName: typed.partner_name,
+        partnerEmail: typed.partner_email,
+        pace: "weekly",
+      },
+    });
     expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("echoes daily back for a missing pace", async () => {
+    const { question, partner_email } = valid;
+    const state = await startBenvolio({}, formData({ question, partner_name: "", partner_email }));
+    expect(state).toMatchObject({ values: { pace: "daily" } });
   });
 
   it("defaults to daily for anything but weekly", async () => {
