@@ -38,7 +38,9 @@ function fromCli(): LocalSupabase {
     throw new Error(`Couldn't read local Supabase's status. Is \`npx supabase start\` running?\n${detail}`);
   }
   // The CLI may print notices before the JSON.
-  const status = JSON.parse(out.slice(out.indexOf("{")));
+  const start = out.indexOf("{");
+  if (start === -1) throw new Error(`Couldn't read local Supabase's status:\n${out}`);
+  const status = JSON.parse(out.slice(start));
   const found: LocalSupabase = {
     url: status.API_URL,
     publishableKey: status.PUBLISHABLE_KEY,

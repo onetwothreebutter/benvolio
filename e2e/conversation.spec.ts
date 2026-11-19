@@ -46,7 +46,8 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
     initiator: { kind: "decide_question", proposed: "Should we get a dog this year?" },
     recipient: { kind: "wait_for_question" },
   });
-  // Accepting it reopens Jane's opening, so her stance answers the new wording.
+  // Accepting it reopens Jane's opening (the helper does this for now, as the
+  // model's decideQuestion does), so her stance answers the new wording.
   await acceptProposedQuestion(started.id);
   await expectNext(both({ kind: "sit", sitting: 0 }));
   for (const phone of Object.values(phones)) {
