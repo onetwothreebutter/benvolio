@@ -35,8 +35,10 @@ export function localSupabase(): LocalSupabase {
   for (const [name, value] of Object.entries(found)) {
     if (!value) throw new Error(`\`supabase status\` gave no ${name}`);
   }
-  if (!/^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(found.url)) {
-    throw new Error(`Refusing to run end-to-end tests against ${found.url}`);
+  for (const url of [found.url, found.mailpitUrl]) {
+    if (!/^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(url)) {
+      throw new Error(`Refusing to run end-to-end tests against ${url}`);
+    }
   }
   process.env.E2E_LOCAL_SUPABASE = JSON.stringify(found);
   return found;

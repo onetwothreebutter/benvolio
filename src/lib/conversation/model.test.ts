@@ -17,6 +17,7 @@ import {
   type Submission,
   type Tags,
 } from "./model";
+import { ROUNDS } from "./rounds";
 import { three, validSitting } from "@/test/sittings";
 
 const noTags: Tags = [[], [], []];
@@ -31,6 +32,11 @@ function bothThrough(c: Conversation, lastSitting: number) {
 }
 
 const started = () => startConversation("  Should we get a dog?  ");
+
+// validSitting builds its fixtures from ROUNDS, so pin the order here.
+it("responds to the rounds in the designed order", () => {
+  expect(ROUNDS.map((r) => r.respond.kind)).toEqual(["rephrase", "answer", "react", "agree", "rank"]);
+});
 
 describe("starting and joining", () => {
   it("lets the initiator write first while the recipient has to join", () => {

@@ -5,31 +5,31 @@ type Summary = { ID: string; Subject: string };
 
 /**
  * Waits for the next email to `to` in local Supabase's Mailpit inbox, then
- * removes it, so the following call waits for a newer one.
+ * clears the inbox for `to`, so the following call waits for a newer one.
  */
 async function takeEmail(to: string): Promise<{ subject: string; html: string }> {
   const mailpit = localSupabase().mailpitUrl;
   const query = encodeURIComponent(`to:"${to}"`);
-  let found: Summary | undefined;
+  let messages: Summary[] = [];
   await expect
     .poll(
       async () => {
         const res = await fetch(`${mailpit}/api/v1/search?query=${query}`);
-        const { messages } = (await res.json()) as { messages: Summary[] };
-        found = messages[0]; // Newest first.
-        return found;
+        ({ messages } = (await res.json()) as { messages: Summary[] });
+        return messages.length;
       },
       { message: `an email to ${to}`, timeout: 15_000 },
     )
-    .toBeTruthy();
-  const message = (await (await fetch(`${mailpit}/api/v1/message/${found!.ID}`)).json()) as {
+    .toBeGreaterThan(0);
+  // Newest first. Older ones carry codes it has replaced, so they go too.
+  const message = (await (await fetch(`${mailpit}/api/v1/message/${messages[0].ID}`)).json()) as {
     Subject: string;
     HTML: string;
   };
   await fetch(`${mailpit}/api/v1/messages`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ IDs: [found!.ID] }),
+    body: JSON.stringify({ IDs: messages.map((m) => m.ID) }),
   });
   return { subject: message.Subject, html: message.HTML };
 }

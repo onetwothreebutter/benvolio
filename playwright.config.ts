@@ -35,10 +35,11 @@ export default defineConfig({
     // runs here so it bakes in the local Supabase below, never .env.local's.
     command: process.env.CI ? "npx next build --no-lint && npx next start" : "npx next dev",
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    // Never reuse a server already on the port: it may talk to production.
+    reuseExistingServer: false,
     timeout: 300_000,
     // These win over .env.local, so the app never talks to production Supabase,
-    // PostHog or Sentry while under test.
+    // PostHog or Sentry while under test, nor uploads source maps when built.
     env: {
       PORT: String(PORT),
       SITE_URL: baseURL,
@@ -47,6 +48,7 @@ export default defineConfig({
       SUPABASE_SECRET_KEY: supabase.secretKey,
       NEXT_PUBLIC_POSTHOG_KEY: "",
       NEXT_PUBLIC_SENTRY_DSN: "",
+      SENTRY_AUTH_TOKEN: "",
     },
   },
 });
