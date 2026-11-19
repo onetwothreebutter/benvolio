@@ -16,7 +16,7 @@ export default async function Home() {
       <p className={styles.tagline}>{TAGLINE}</p>
       {!signedIn && <p className={styles.intro}>{DESCRIPTION}</p>}
       {signedIn ? (
-        <>
+        <div className={form.form}>
           {benvolios.length > 0 && (
             <ul className={styles.list}>
               {benvolios.map((b) => (
@@ -35,7 +35,7 @@ export default async function Home() {
               Sign out
             </button>
           </form>
-        </>
+        </div>
       ) : (
         <Link href="/sign-in" className={form.button}>
           Sign in

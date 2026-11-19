@@ -1,5 +1,7 @@
 /* --bg is mirrored in viewport.themeColor in layout.tsx. */
 :root {
+  /* Native controls (radios, text boxes) follow the theme too. */
+  color-scheme: light dark;
   --bg: #f7f1e8;
   --text: #2b2420;
   --muted: #6b5f57;
@@ -27,4 +29,9 @@ body {
   font-family: var(--font);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+/* The browser's default link blue is unreadable on the dark background. */
+a {
+  color: var(--accent);
 }

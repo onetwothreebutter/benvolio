@@ -11,6 +11,7 @@ import { startBenvolio, type StartState } from "./actions";
 export function StartForm() {
   const [state, action, pending] = useActionState<StartState, FormData>(startBenvolio, {});
   if (state.done) return <Invite {...state} />;
+  const values = state.values;
 
   return (
     <form action={action} className={styles.form}>
@@ -23,6 +24,7 @@ export function StartForm() {
         rows={3}
         maxLength={MAX_QUESTION_LENGTH}
         required
+        defaultValue={values?.question}
         placeholder="Should we move closer to family?"
         className={styles.input}
       />
@@ -37,6 +39,7 @@ export function StartForm() {
         id="partner_name"
         name="partner_name"
         maxLength={MAX_FIRST_NAME_LENGTH}
+        defaultValue={values?.partnerName}
         required
         className={styles.input}
       />
@@ -49,16 +52,17 @@ export function StartForm() {
         name="partner_email"
         type="email"
         required
+        defaultValue={values?.partnerEmail}
         className={styles.input}
       />
 
       <fieldset className={styles.form}>
         <legend className={styles.label}>How often should we nudge you both?</legend>
         <label>
-          <input type="radio" name="pace" value="daily" defaultChecked /> Every day
+          <input type="radio" name="pace" value="daily" defaultChecked={values?.pace !== "weekly"} /> Every day
         </label>
         <label>
-          <input type="radio" name="pace" value="weekly" /> Every week
+          <input type="radio" name="pace" value="weekly" defaultChecked={values?.pace === "weekly"} /> Every week
         </label>
       </fieldset>
 
