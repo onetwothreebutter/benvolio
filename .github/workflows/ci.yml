@@ -34,3 +34,25 @@ jobs:
       - run: npx next build --no-lint
       # Next only runs instrumentation from the expected place; fail if it moves.
       - run: test -f .next/server/instrumentation.js
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # Supabase (database, auth and the Mailpit inbox) in Docker, with the
+      # migrations applied. Only what the app uses is started.
+      - run: npx supabase start
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

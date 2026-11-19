@@ -30,3 +30,7 @@ npm-debug.log*
 
 # Elm build output (legacy prototype)
 elm-stuff/
+
+# Playwright
+/test-results/
+/playwright-report/
