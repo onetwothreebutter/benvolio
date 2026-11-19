@@ -66,6 +66,12 @@ describe("startBenvolio", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
+  it("echoes daily back for a missing pace", async () => {
+    const { question, partner_email } = valid;
+    const state = await startBenvolio({}, formData({ question, partner_name: "", partner_email }));
+    expect(state).toMatchObject({ values: { pace: "daily" } });
+  });
+
   it("defaults to daily for anything but weekly", async () => {
     await startBenvolio({}, formData({ ...valid, pace: "hourly" }));
     expect(rpc.mock.calls[0][1].pace).toBe("daily");
