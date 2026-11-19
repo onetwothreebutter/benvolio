@@ -103,3 +103,20 @@ test("signing in returns to the page that asked for it", async ({ page }, testIn
   await expect(page).toHaveURL("/start");
   await expect(page.getByRole("heading", { name: "Start a Benvolio" })).toBeVisible();
 });
+
+test("signing out on one phone leaves the others signed in", async ({
+  page,
+  anotherPhone,
+}, testInfo) => {
+  const jane = newPerson("Jane", testInfo);
+  await signIn(page, jane);
+  const janesTablet = await anotherPhone();
+  // Supabase refuses a second email to one address within max_frequency.
+  await janesTablet.waitForTimeout(1_100);
+  await signIn(janesTablet, jane);
+
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
+  await janesTablet.reload();
+  await expect(janesTablet.getByText("Signed in as Jane.")).toBeVisible();
+});

@@ -16,7 +16,8 @@ export function localSupabase(): LocalSupabase {
   const known = process.env.E2E_LOCAL_SUPABASE;
   const found = known ? (JSON.parse(known) as LocalSupabase) : fromCli();
   for (const url of [found.url, found.mailpitUrl]) {
-    if (!/^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(url)) {
+    const { protocol, hostname, username } = new URL(url);
+    if (protocol !== "http:" || username || !["localhost", "127.0.0.1"].includes(hostname)) {
       throw new Error(`Refusing to run end-to-end tests against ${url}`);
     }
   }

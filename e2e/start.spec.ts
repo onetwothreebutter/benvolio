@@ -11,6 +11,10 @@ test("starting a Benvolio gives an invite link and a page for it", async ({
 }, testInfo) => {
   const jane = newPerson("Jane", testInfo);
   const rhonda = newPerson("Rhonda", testInfo);
+  // Without a share sheet the button copies, as on a desktop browser.
+  await page.addInitScript(() => {
+    delete (Navigator.prototype as { share?: unknown }).share;
+  });
   await signIn(page, jane);
   await page.getByRole("link", { name: "Start a Benvolio" }).click();
 
@@ -24,7 +28,6 @@ test("starting a Benvolio gives an invite link and a page for it", async ({
   const inviteUrl = await page.getByLabel("Invite link").inputValue();
   expect(inviteUrl).toMatch(new RegExp(`^${baseURL}/join/\\S+$`));
 
-  // Headless Chromium has no share sheet, so the button copies instead.
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.getByRole("button", { name: "Copy the link" }).click();
   await expect(page.getByRole("button", { name: "Copied" })).toBeVisible();
@@ -113,11 +116,12 @@ test("a new invite link replaces the old one", async ({ page, anotherPhone }, te
   await page.getByRole("button", { name: "Make a new invite link" }).click();
   await expect(formError(page)).toHaveText("There's no invite to renew: they may have joined already.");
   await page.reload();
+  await expect(page.getByText("With Rhonda")).toBeVisible();
   await expect(page.getByRole("button", { name: "Make a new invite link" })).toHaveCount(0);
 });
 
 test("on a phone, the Share button shares the invite link", async ({ page }, testInfo) => {
-  // Headless Chromium has no share sheet, so stand one in.
+  // Stand in a share sheet, as phones have.
   await page.addInitScript(() => {
     navigator.share = async (data) => {
       (window as unknown as { shared: ShareData }).shared = data!;
@@ -130,6 +134,8 @@ test("on a phone, the Share button shares the invite link", async ({ page }, tes
   expect(shared.url).toBe(started.inviteUrl);
 
   // Pace defaults to daily.
+  await page.goto("/start");
+  await expect(page.getByLabel("Every day")).toBeChecked();
   const { data } = await adminDatabase().from("benvolios").select("pace").eq("id", started.id).single();
   expect(data?.pace).toBe("daily");
 });

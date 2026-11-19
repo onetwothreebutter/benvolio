@@ -30,8 +30,9 @@ nothing needs resetting between runs.
 
 ## What's covered
 
-- `sign-in.spec.ts`: code and link sign-in, the name step, sign-out, wrong and
-  malformed codes, used links, returning to the page that asked.
+- `sign-in.spec.ts`: code and link sign-in, the name step, signing out on one
+  phone only, wrong and malformed codes, used links, returning to the page
+  that asked.
 - `start.spec.ts`: starting a Benvolio, the pace, every form error, sharing
   and copying the link, renewing it (including from stale pages).
 - `invite.spec.ts`: joining from the link (signed in or not, any email, by
@@ -42,7 +43,9 @@ nothing needs resetting between runs.
   says at every turn.
 - `dead-ends.spec.ts`: 404s, signed-out redirects, broken links, unsafe `next`.
 
-Not covered: the global error page, which needs a server fault to reach.
+Not covered, as each needs a fault or timing the tests can't arrange: the
+global error page, "We couldn't send the email", the "Too many tries" message,
+and opening the emailed link in a different browser from the one that asked.
 
 The writing screens and the button to accept new wording aren't built yet, so
 `conversation.spec.ts` puts that writing into the database
