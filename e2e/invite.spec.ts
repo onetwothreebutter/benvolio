@@ -6,6 +6,7 @@ import { NOT_FOUND } from "./support/screen";
 import {
   askForCode,
   enterCode,
+  joinFromInvite,
   newPerson,
   signIn,
   signInHere,
@@ -125,7 +126,7 @@ test("the initiator opening their own link is told to send it on", async ({ page
   await expect(page.getByRole("button", { name: "Join" })).toHaveCount(0);
 });
 
-test("an expired invite can't be used", async ({ page, anotherPhone }, testInfo) => {
+test("an expired invite can't be used, but a new one can", async ({ page, anotherPhone }, testInfo) => {
   await signIn(page, newPerson("Jane", testInfo));
   const started = await startBenvolio(page, newPerson("Rhonda", testInfo));
   const { error } = await adminDatabase()
@@ -138,6 +139,13 @@ test("an expired invite can't be used", async ({ page, anotherPhone }, testInfo)
   await rhondasPhone.goto(started.inviteUrl);
   await expect(rhondasPhone.getByRole("heading", { name: INVITE_GONE })).toBeVisible();
   await expect(rhondasPhone.getByText("Ask the person who sent it for a new one.")).toBeVisible();
+
+  // Jane makes a new link, which works.
+  await page.goto(`/b/${started.id}`);
+  await page.getByRole("button", { name: "Make a new invite link" }).click();
+  const renewed = await page.getByLabel("Invite link").inputValue();
+  await joinFromInvite(rhondasPhone, renewed, newPerson("Rhonda", testInfo));
+  await expect(rhondasPhone).toHaveURL(`/b/${started.id}`);
 });
 
 test("a made-up invite link explains itself", async ({ page }) => {

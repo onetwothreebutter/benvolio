@@ -2,7 +2,7 @@ import { statusLine } from "@/lib/conversation/status";
 import { INVITE_GONE, OWN_INVITE } from "@/lib/invites/messages";
 import { adminDatabase } from "./support/database";
 import { formError } from "./support/screen";
-import { joinFromInvite, newPerson, signIn, startBenvolio } from "./support/people";
+import { newPerson, signIn, startBenvolio } from "./support/people";
 import { expect, test } from "./support/test";
 
 test("starting a Benvolio gives an invite link and a page for it", async ({
@@ -85,6 +85,10 @@ test("the start form explains mistakes and keeps what was typed", async ({ page 
 test("a new invite link replaces the old one", async ({ page, anotherPhone }, testInfo) => {
   await signIn(page, newPerson("Jane", testInfo));
   const started = await startBenvolio(page, newPerson("Rhonda", testInfo));
+  // Rhonda has the old link open, ready to join.
+  const rhondasPhone = await anotherPhone();
+  await signIn(rhondasPhone, newPerson("Rhonda", testInfo));
+  await rhondasPhone.goto(started.inviteUrl);
 
   await page.goto(`/b/${started.id}`);
   await page.getByRole("button", { name: "Make a new invite link" }).click();
@@ -92,17 +96,40 @@ test("a new invite link replaces the old one", async ({ page, anotherPhone }, te
   expect(renewed).toMatch(/\/join\/\S+$/);
   expect(renewed).not.toBe(started.inviteUrl);
 
+  await rhondasPhone.getByRole("button", { name: "Join" }).click();
+  await expect(formError(rhondasPhone)).toHaveText(INVITE_GONE);
   await page.goto(started.inviteUrl);
   await expect(page.getByRole("heading", { name: INVITE_GONE })).toBeVisible();
   await page.goto(renewed);
   // Still Jane's own invite, but alive.
   await expect(page.getByRole("heading", { name: OWN_INVITE })).toBeVisible();
 
-  const rhondasPhone = await anotherPhone();
-  await joinFromInvite(rhondasPhone, renewed, newPerson("Rhonda", testInfo));
+  // Jane has her page open while Rhonda joins with the new link.
+  await page.goto(`/b/${started.id}`);
+  await rhondasPhone.goto(renewed);
+  await rhondasPhone.getByRole("button", { name: "Join" }).click();
   await expect(rhondasPhone).toHaveURL(`/b/${started.id}`);
 
-  // Once Rhonda has joined there's nothing left to renew.
-  await page.goto(`/b/${started.id}`);
+  await page.getByRole("button", { name: "Make a new invite link" }).click();
+  await expect(formError(page)).toHaveText("There's no invite to renew: they may have joined already.");
+  await page.reload();
   await expect(page.getByRole("button", { name: "Make a new invite link" })).toHaveCount(0);
+});
+
+test("on a phone, the Share button shares the invite link", async ({ page }, testInfo) => {
+  // Headless Chromium has no share sheet, so stand one in.
+  await page.addInitScript(() => {
+    navigator.share = async (data) => {
+      (window as unknown as { shared: ShareData }).shared = data!;
+    };
+  });
+  await signIn(page, newPerson("Jane", testInfo));
+  const started = await startBenvolio(page, newPerson("Rhonda", testInfo));
+  await page.getByRole("button", { name: "Share the link" }).click();
+  const shared = await page.evaluate(() => (window as unknown as { shared: ShareData }).shared);
+  expect(shared.url).toBe(started.inviteUrl);
+
+  // Pace defaults to daily.
+  const { data } = await adminDatabase().from("benvolios").select("pace").eq("id", started.id).single();
+  expect(data?.pace).toBe("daily");
 });
