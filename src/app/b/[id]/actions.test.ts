@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startConversation } from "@/lib/conversation/model";
+import { join, startConversation, submit, type Conversation } from "@/lib/conversation/model";
 import { formData } from "@/test/form-data";
 import { validSitting } from "@/test/sittings";
 
@@ -193,5 +193,75 @@ describe("submitSitting", () => {
     expect(trackServer).not.toHaveBeenCalled();
     insert.mockResolvedValue({ error: { code: "XX000", message: "boom" } });
     await expect(submitSitting({}, opening())).rejects.toThrow("boom");
+  });
+});
+
+describe("submitSitting, responding to a round", () => {
+  /** Both people's sittings before `through`, so `through` is next for each. */
+  function revealed(through: number): Conversation {
+    let c = join(startConversation("Should we get a dog?"));
+    for (let sitting = 0; sitting < through; sitting++) {
+      for (const role of ["initiator", "recipient"] as const) {
+        c = submit(c, role, sitting, validSitting(sitting, role));
+      }
+    }
+    return c;
+  }
+  const sittingForm = (sitting: number, fields: Record<string, string | string[]>) =>
+    formData({ benvolio_id: ID, sitting: String(sitting), ...fields });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    requireSignedIn.mockResolvedValue({ userId: "jane", email: "j@example.com" });
+    insert.mockResolvedValue({ error: null });
+  });
+
+  it("saves a rephrasing with the next round's items, and tracks both steps", async () => {
+    loadBenvolioToWrite.mockResolvedValue({ role: "initiator", partnerName: "Rhonda", conversation: revealed(1) });
+    const write = ["Q 1", "Q 2", "Q 3"];
+    const texts = { "texts.0": "R 1", "texts.1": "R 2", "texts.2": "R 3" };
+    const respond = { kind: "rephrase", texts: ["R 1", "R 2", "R 3"] };
+    await expect(submitSitting({}, sittingForm(1, { ...texts, write }))).rejects.toThrow(
+      "redirect",
+    );
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ sitting: 1, body: { respond, write } }));
+    expect(trackServer.mock.calls.map(([, , p]) => [p.step, p.round])).toEqual([
+      ["respond", 1],
+      ["write", 2],
+    ]);
+  });
+
+  it("saves answers with the feelings ticked for each, and explains a missing answer", async () => {
+    loadBenvolioToWrite.mockResolvedValue({ role: "initiator", partnerName: "Rhonda", conversation: revealed(2) });
+    const fields = {
+      "texts.0": "A 1",
+      "texts.1": "A 2",
+      "texts.2": "A 3",
+      "tags.0": "hopeful",
+      "tags.2": ["sad", "relieved"],
+      write: ["S 1", "S 2", "S 3"],
+    };
+    await expect(submitSitting({}, sittingForm(2, fields))).rejects.toThrow("redirect");
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: {
+          respond: { kind: "answer", texts: ["A 1", "A 2", "A 3"], tags: [["hopeful"], [], ["sad", "relieved"]] },
+          write: ["S 1", "S 2", "S 3"],
+        },
+      }),
+    );
+
+    insert.mockClear();
+    const missing = { ...fields, "texts.1": "" };
+    expect(await submitSitting({}, sittingForm(2, missing))).toMatchObject({
+      error: "Please answer all 3. You can pick up to 3 feelings for each.",
+      input: { respond: { kind: "answer", texts: ["A 1", "", "A 3"] } },
+    });
+    const tooMany = { ...fields, "tags.1": ["sad", "hurt", "hopeful", "curious"] };
+    expect(await submitSitting({}, sittingForm(2, tooMany))).toMatchObject({
+      error: "Please answer all 3. You can pick up to 3 feelings for each.",
+      input: { respond: { tags: [["hopeful"], ["sad", "hurt", "hopeful", "curious"], ["sad", "relieved"]] } },
+    });
+    expect(insert).not.toHaveBeenCalled();
   });
 });

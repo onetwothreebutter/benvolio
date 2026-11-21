@@ -11,7 +11,8 @@ import {
   sittingParts,
   type ParseResult,
 } from "@/lib/conversation/model";
-import { ITEMS_PER_ROUND } from "@/lib/conversation/rounds";
+import { MAX_FEELINGS_PER_ITEM } from "@/lib/conversation/feelings";
+import { ITEMS_PER_ROUND, type ResponseKind } from "@/lib/conversation/rounds";
 import { isBenvolioId } from "@/lib/db/benvolio-id";
 import { loadBenvolioToWrite } from "@/lib/db/load-benvolio";
 import { newInviteToken } from "@/lib/invites/token";
@@ -71,9 +72,18 @@ const CHECK_IT = "Please check what you wrote.";
 const INVALID: Record<Extract<ParseResult, { ok: false }>["invalid"], string> = {
   stance: `Please write where you stand, in up to ${MAX_ITEM_LENGTH.toLocaleString("en")} characters.`,
   write: `Please write all ${ITEMS_PER_ROUND}, each up to ${MAX_ITEM_LENGTH.toLocaleString("en")} characters.`,
-  respond: CHECK_IT,
+  respond: CHECK_IT, // Said per kind: see INVALID_RESPONSE.
   sitting: CHECK_IT,
   shape: CHECK_IT,
+};
+
+const FEELINGS_LIMIT = `You can pick up to ${MAX_FEELINGS_PER_ITEM} feelings for each.`;
+const INVALID_RESPONSE: Record<ResponseKind, string> = {
+  rephrase: `Please put all ${ITEMS_PER_ROUND} in your own words.`,
+  answer: `Please answer all ${ITEMS_PER_ROUND}. ${FEELINGS_LIMIT}`,
+  react: FEELINGS_LIMIT,
+  agree: "Please say whether you agree with each one.",
+  rank: `Please rank them 1 to ${ITEMS_PER_ROUND}, using each number once.`,
 };
 
 export type SitState = {
@@ -100,7 +110,8 @@ export async function submitSitting(_state: SitState, form: FormData): Promise<S
   // An opening answers the question as its writer saw it. If that changed
   // (new wording suggested or accepted meanwhile), give it back, not lose it.
   const { question } = benvolio.conversation;
-  const opening = sittingParts(sitting).stance;
+  const parts = sittingParts(sitting);
+  const opening = parts.stance;
   if (opening && text(form.get(FIELD.question)) !== text(question.text)) {
     return {
       error: `The question is now “${question.text}”. Check your opening still answers it, then send it.`,
@@ -117,7 +128,10 @@ export async function submitSitting(_state: SitState, form: FormData): Promise<S
   const checked = checkSubmission(benvolio.conversation, benvolio.role, sitting, input);
   if (!checked.ok) {
     if ("notYourTurn" in checked) redirect(here);
-    return { error: INVALID[checked.invalid], input };
+    const { respond } = parts;
+    const error =
+      checked.invalid === "respond" && respond ? INVALID_RESPONSE[respond.kind] : INVALID[checked.invalid];
+    return { error, input };
   }
   const { error } = await createAdminClient()
     .from("submissions")
@@ -126,7 +140,7 @@ export async function submitSitting(_state: SitState, form: FormData): Promise<S
   if (error?.code === "23505") redirect(here);
   if (error) throw new Error(`Sending a sitting failed: ${error.message}`);
 
-  const { respond, write } = sittingParts(sitting);
+  const { respond, write } = parts;
   for (const [step, part] of [["respond", respond], ["write", write]] as const) {
     if (part) {
       trackServer(userId, "step_submitted", {

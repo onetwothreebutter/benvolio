@@ -3,21 +3,22 @@ import { LAST_SITTING, partnerOf, type NextAction, type Role } from "@/lib/conve
 import { statusLine } from "@/lib/conversation/status";
 import { joinFromInvite, newPerson, signIn, startBenvolio } from "./support/people";
 import { formError, STANCE } from "./support/screen";
-import { writeOpening, writeSitting } from "./support/sittings";
+import { typeSitting, writeSitting } from "./support/sittings";
 import { expect, test } from "./support/test";
 
 /**
  * A whole Benvolio, from the invite to the finish, checking what each person's
- * page tells them at every turn. Openings are typed; later sittings go
+ * page tells them at every turn. Sittings with screens are typed; the rest go
  * straight into the database (see support/sittings.ts) until their screens exist.
  */
+const LAST_TYPED_SITTING = 2;
 test("two people take turns through a whole Benvolio", async ({ page, anotherPhone }, testInfo) => {
   test.setTimeout(180_000);
   await signIn(page, newPerson("Jane", testInfo));
   const started = await startBenvolio(page, newPerson("Rhonda", testInfo), "Should we get a dog?");
 
   // Jane writes her opening before Rhonda suggests new wording.
-  await writeOpening(page, started.id, "initiator");
+  await typeSitting(page, started.id, "initiator", 0);
   const rhondasPhone = await anotherPhone();
   await joinFromInvite(
     rhondasPhone,
@@ -63,7 +64,9 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
     const second = partnerOf(first);
     await test.step(`sitting ${sitting + 1} of ${LAST_SITTING + 1}`, async () => {
       const write = (role: Role) =>
-        sitting === 0 ? writeOpening(phones[role], started.id, role) : writeSitting(started.id, role, sitting);
+        sitting <= LAST_TYPED_SITTING
+          ? typeSitting(phones[role], started.id, role, sitting)
+          : writeSitting(started.id, role, sitting);
       await write(first);
       await expectNext({
         [first]: { kind: "wait", sitting },
