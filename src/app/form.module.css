@@ -63,3 +63,10 @@
   font-weight: 600;
   margin: 0;
 }
+
+.quote {
+  margin: 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--accent);
+  font-size: 1.1rem;
+}

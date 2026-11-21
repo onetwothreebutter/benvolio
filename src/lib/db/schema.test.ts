@@ -283,9 +283,9 @@ describe("agreement with the turn-taking model", () => {
     await expectSameView(c);
 
     c = decideQuestion(c, "initiator", true);
-    await asService("update public.benvolios set question = $1, proposed_question = null where id = $2", [NEW, B]);
-    await asService("delete from public.submissions where benvolio_id = $1 and sitting = 0 and role = 'initiator'", [B]);
+    await asService("select public.decide_question($1, $2, true)", [B, JANE]);
     await expectSameView(c);
+    expect((await as(JANE, "select question from public.benvolios")).rows).toEqual([{ question: NEW }]);
 
     c = await sit(c, 0, "recipient");
     c = await sit(c, 0, "initiator");
@@ -385,19 +385,41 @@ describe("starting and joining", () => {
     expect(await renew(JANE, "hash-3")).toBe(false);
   });
 
+  it("lets only the initiator decide on new wording, once", async () => {
+    const decide = (person: string, accept: boolean) =>
+      asService("select public.decide_question($1, $2, $3) as ok", [B, person, accept]).then(
+        (r) => (r.rows[0] as { ok: boolean }).ok,
+      );
+    const question = async () =>
+      (await asService("select question, proposed_question from public.benvolios where id = $1", [B]))
+        .rows[0];
+    expect(await decide(JANE, false)).toBe(false);
+
+    await submit(0, "initiator");
+    await asService("update public.benvolios set proposed_question = 'A dog or a cat?' where id = $1", [B]);
+    expect(await decide(RHONDA, true)).toBe(false);
+    expect(await decide(STRANGER, true)).toBe(false);
+    expect(await decide(JANE, false)).toBe(true);
+    expect(await question()).toEqual({ question: "Should we get a dog?", proposed_question: null });
+    // Keeping the wording keeps Jane's opening.
+    expect(await visibleSubmissions(JANE)).toEqual([{ sitting: 0, role: "initiator" }]);
+    expect(await decide(JANE, true)).toBe(false);
+  });
+
   it("can only be called by the server", async () => {
     const callable = await db.query<{ fn: string; ok: boolean }>(
       `select r as fn, has_function_privilege(r, f, 'execute') as ok
        from unnest(array['anon', 'authenticated', 'service_role']) r,
             unnest(array['public.start_benvolio(uuid, text, text, text, text, public.benvolio_pace)',
                          'public.join_benvolio(text, uuid, text)',
-                         'public.renew_invite(uuid, uuid, text)']) f
+                         'public.renew_invite(uuid, uuid, text)',
+                         'public.decide_question(uuid, uuid, boolean)']) f
        order by 1`,
     );
     const allowed = (role: string) =>
       callable.rows.filter((row) => row.fn === role).map((row) => row.ok);
-    expect(allowed("anon")).toEqual([false, false, false]);
-    expect(allowed("authenticated")).toEqual([false, false, false]);
-    expect(allowed("service_role")).toEqual([true, true, true]);
+    expect(allowed("anon")).toEqual([false, false, false, false]);
+    expect(allowed("authenticated")).toEqual([false, false, false, false]);
+    expect(allowed("service_role")).toEqual([true, true, true, true]);
   });
 });

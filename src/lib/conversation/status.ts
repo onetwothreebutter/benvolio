@@ -6,7 +6,7 @@ export function statusLine(action: NextAction, partner: string): string {
     case "join": // Only the recipient joins, and they can't see the page until they have.
       throw new Error("Unreachable: a recipient who hasn't joined can't load this page");
     case "decide_question":
-      return `${partner} suggested new wording: “${action.proposed}”`;
+      return `${partner} suggested new wording for the question.`;
     case "wait_for_question":
       return `Waiting for ${partner} to agree to your wording.`;
     case "sit":

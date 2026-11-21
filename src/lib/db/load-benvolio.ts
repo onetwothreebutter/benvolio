@@ -1,5 +1,6 @@
 import "server-only";
 import { partnerOf } from "@/lib/conversation/model";
+import { isBenvolioId } from "./benvolio-id";
 import { createClient } from "@/lib/supabase/server";
 import {
   toConversation,
@@ -13,7 +14,7 @@ import {
  * security. Null if it doesn't exist or they aren't in it.
  */
 export async function loadBenvolio(id: string, userId: string) {
-  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  if (!isBenvolioId(id)) return null;
   const supabase = await createClient();
   // Three queries: submissions reference participants, not benvolios, so
   // PostgREST can't embed them in one select.

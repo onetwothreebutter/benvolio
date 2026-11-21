@@ -6,8 +6,15 @@ vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc }) }));
 const requireSignedIn = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/auth/session", () => ({ requireSignedIn }));
 vi.mock("server-only", () => ({}));
+const redirect = vi.hoisted(() =>
+  vi.fn((to: string) => {
+    throw new Error(`redirect ${to}`);
+  }),
+);
+vi.mock("next/navigation", () => ({ redirect }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
-const { renewInvite } = await import("./actions");
+const { decideQuestion, renewInvite } = await import("./actions");
 const { hashInviteToken } = await import("@/lib/invites/token");
 
 const ID = "00000000-0000-4000-8000-0000000000b1";
@@ -38,6 +45,42 @@ describe("renewInvite", () => {
       error: expect.any(String),
     });
     expect(await renewInvite({}, formData({ benvolio_id: "nope" }))).toEqual({
+      error: expect.any(String),
+    });
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("decideQuestion", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    requireSignedIn.mockResolvedValue({ userId: "jane", email: "j@example.com" });
+    rpc.mockResolvedValue({ data: true, error: null });
+  });
+
+  it("asks the database to decide as this person, then reloads the page", async () => {
+    for (const accept of ["yes", "no"]) {
+      await expect(decideQuestion({}, formData({ benvolio_id: ID, accept }))).rejects.toThrow(
+        `redirect /b/${ID}`,
+      );
+      expect(rpc).toHaveBeenLastCalledWith("decide_question", {
+        benvolio: ID,
+        initiator: "jane",
+        accept: accept === "yes",
+      });
+    }
+  });
+
+  it("explains when there's nothing to decide", async () => {
+    rpc.mockResolvedValue({ data: false, error: null });
+    expect(await decideQuestion({}, formData({ benvolio_id: ID, accept: "yes" }))).toEqual({
+      error: expect.any(String),
+    });
+    expect(await decideQuestion({}, formData({ benvolio_id: "nope", accept: "yes" }))).toEqual({
+      error: expect.any(String),
+    });
+    // Without a choice, nothing is thrown away.
+    expect(await decideQuestion({}, formData({ benvolio_id: ID }))).toEqual({
       error: expect.any(String),
     });
     expect(rpc).toHaveBeenCalledTimes(1);
