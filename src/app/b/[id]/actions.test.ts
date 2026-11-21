@@ -12,6 +12,7 @@ const redirect = vi.hoisted(() =>
   }),
 );
 vi.mock("next/navigation", () => ({ redirect }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const { decideQuestion, renewInvite } = await import("./actions");
 const { hashInviteToken } = await import("@/lib/invites/token");
@@ -76,6 +77,10 @@ describe("decideQuestion", () => {
       error: expect.any(String),
     });
     expect(await decideQuestion({}, formData({ benvolio_id: "nope", accept: "yes" }))).toEqual({
+      error: expect.any(String),
+    });
+    // Without a choice, nothing is thrown away.
+    expect(await decideQuestion({}, formData({ benvolio_id: ID }))).toEqual({
       error: expect.any(String),
     });
     expect(rpc).toHaveBeenCalledTimes(1);

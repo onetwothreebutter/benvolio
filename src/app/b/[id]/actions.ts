@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSignedIn } from "@/lib/auth/session";
 import { isBenvolioId } from "@/lib/db/benvolio-id";
@@ -39,13 +40,18 @@ export async function decideQuestion(_state: DecideState, form: FormData): Promi
   const id = String(form.get("benvolio_id") ?? "");
   const here = `/b/${id}`;
   const { userId } = await requireSignedIn(here);
-  if (!isBenvolioId(id)) return { error: NOTHING_TO_DECIDE };
+  const choice = form.get("accept");
+  if (!isBenvolioId(id) || (choice !== "yes" && choice !== "no")) return { error: NOTHING_TO_DECIDE };
   const { data, error } = await createAdminClient().rpc("decide_question", {
     benvolio: id,
     initiator: userId,
-    accept: form.get("accept") === "yes",
+    accept: choice === "yes",
   });
   if (error) throw new Error(`Deciding on the question failed: ${error.message}`);
-  if (!data) return { error: NOTHING_TO_DECIDE };
+  if (!data) {
+    // Decided elsewhere: show where things stand, with the message.
+    revalidatePath(here);
+    return { error: NOTHING_TO_DECIDE };
+  }
   redirect(here);
 }

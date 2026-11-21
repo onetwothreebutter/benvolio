@@ -16,7 +16,7 @@ export function DecideQuestion({
 }) {
   const [state, action, pending] = useActionState<DecideState, FormData>(decideQuestion, {});
   return (
-    <form action={action} className={styles.form}>
+    <form action={action} aria-label="The new wording" className={styles.form}>
       <input type="hidden" name="benvolio_id" value={benvolioId} />
       <blockquote className={styles.quote}>{proposed}</blockquote>
       {openingWritten && (
