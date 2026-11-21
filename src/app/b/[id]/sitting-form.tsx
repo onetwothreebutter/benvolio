@@ -8,14 +8,15 @@ import {
   sittingParts,
   type Items,
   type ResponseField,
+  type Role,
 } from "@/lib/conversation/model";
 import { ITEMS_PER_ROUND, type ResponseKind } from "@/lib/conversation/rounds";
 import styles from "../../form.module.css";
 import { submitSitting, type SitState } from "./actions";
 import { FIELD, type SittingInput } from "./sitting-input";
 
-/** The partner's writing this sitting responds to, once revealed. */
-export type Revealed = { items: Items; stance?: string };
+/** The partner's writing this sitting responds to, once revealed, and whose it is. */
+export type Revealed = { items: Items; stance?: string; by: Role };
 
 /** What this person writes in a sitting, sent all at once. */
 export function SittingForm({
@@ -49,9 +50,10 @@ export function SittingForm({
           <legend className={styles.label}>{respond.prompt}</legend>
           {respond.help && <p className={styles.hint}>{respond.help}</p>}
           {revealed?.stance && (
-            <p>
-              {partnerName}&apos;s view: {revealed.stance}
-            </p>
+            <>
+              <p className={styles.hint}>{partnerName}&apos;s view:</p>
+              <p className={`${styles.quote} ${styles[revealed.by]}`}>{revealed.stance}</p>
+            </>
           )}
           {revealed!.items.map((item, i) => (
             <Respond
@@ -59,6 +61,7 @@ export function SittingForm({
               kind={respond.kind}
               label={`${partnerName}'s ${respond.itemName} ${i + 1}`}
               item={item}
+              by={revealed!.by}
               index={i}
               typed={typed?.respond}
             />
@@ -124,12 +127,14 @@ function Respond({
   kind,
   label,
   item,
+  by,
   index,
   typed,
 }: {
   kind: ResponseKind;
   label: string;
   item: string;
+  by: Role;
   index: number;
   typed?: SittingInput["respond"];
 }) {
@@ -157,13 +162,13 @@ function Respond({
       />
     ),
     agree: () => (
-      <fieldset className={styles.choices} aria-describedby={id}>
+      <fieldset className={`${styles.choices} ${styles.pair}`} aria-describedby={id}>
         <legend className={styles.hint}>Do you agree with {label}?</legend>
         {[
           ["agree", "Agree"],
           ["disagree", "Disagree"],
         ].map(([value, text]) => (
-          <label key={value}>
+          <label key={value} className={styles.choice}>
             <input
               type="radio"
               name={FIELD.respond("agree", index)}
@@ -200,8 +205,8 @@ function Respond({
     ),
   };
   return (
-    <div className={styles.form}>
-      <p id={id} className={styles.quote}>
+    <div className={styles.item}>
+      <p id={id} className={`${styles.quote} ${styles[by]}`}>
         {item}
       </p>
       {RESPONSE_FIELDS[kind].map((field) => (

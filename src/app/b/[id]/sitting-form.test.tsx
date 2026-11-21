@@ -20,7 +20,7 @@ describe("SittingForm", () => {
         sitting={RANK_SITTING}
         partnerName="Rhonda"
         question="Q?"
-        revealed={{ items: three("Compromise") }}
+        revealed={{ items: three("Compromise"), by: "initiator" }}
       />,
     );
     const ranks = () => screen.getAllByRole<HTMLSelectElement>("combobox");

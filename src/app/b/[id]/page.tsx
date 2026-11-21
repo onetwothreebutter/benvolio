@@ -71,5 +71,5 @@ function revealedFor(c: Conversation, sitting: number, role: Role): Revealed | u
   const partner = visibleSubmissions(c, sitting - 1, role).partner;
   // A sitting is only ever your turn once the one before it is revealed.
   if (!partner?.write) throw new Error(`Sitting ${sitting - 1} isn't revealed`);
-  return { items: partner.write, stance: partner.stance };
+  return { items: partner.write, stance: partner.stance, by: partnerOf(role) };
 }
