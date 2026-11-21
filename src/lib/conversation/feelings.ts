@@ -25,3 +25,10 @@ const SLUGS: ReadonlySet<string> = new Set(FEELINGS.map((f) => f.slug));
 export function isFeeling(value: unknown): boolean {
   return typeof value === "string" && SLUGS.has(value);
 }
+
+const LABELS: ReadonlyMap<string, string> = new Map(FEELINGS.map((f) => [f.slug, f.label]));
+
+/** The label shown for a stored feeling; the slug itself if it's no longer offered. */
+export function feelingLabel(slug: string): string {
+  return LABELS.get(slug) ?? slug;
+}

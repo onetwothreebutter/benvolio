@@ -1,5 +1,5 @@
 import { expect, type Page } from "@playwright/test";
-import { FEELINGS } from "@/lib/conversation/feelings";
+import { feelingLabel } from "@/lib/conversation/feelings";
 import { sittingParts } from "@/lib/conversation/model";
 import { statusLine } from "@/lib/conversation/status";
 import { validSitting } from "@/test/sittings";
@@ -28,7 +28,7 @@ export async function typeSitting(page: Page, benvolioId: string, who: string, s
     for (const [i, tags] of ("tags" in respond ? respond.tags : []).entries()) {
       const feelings = page.getByRole("group", { name: new RegExp(`${item(i)} make you feel`, "i") });
       for (const tag of tags) {
-        await feelings.getByLabel(FEELINGS.find((f) => f.slug === tag)!.label).check();
+        await feelings.getByLabel(feelingLabel(tag)).check();
       }
     }
     for (const [i, agree] of ("agree" in respond ? respond.agree : []).entries()) {

@@ -142,6 +142,29 @@ export function visibleSubmissions(c: Conversation, sitting: number, viewer: Rol
   };
 }
 
+/** One person's items for a round, and how their partner responded to them. */
+export type Exchange = { items: Items; response: Response };
+
+/**
+ * The items `author` wrote for a round (numbered from 1) and their partner's
+ * response, once that response is revealed. A round's items are written in
+ * the sitting before the one that responds to them.
+ */
+export function exchange(c: Conversation, round: number, author: Role): Exchange | undefined {
+  const items = visibleSubmissions(c, round - 1, author).mine?.write;
+  const response = visibleSubmissions(c, round, author).partner?.respond;
+  return items && response && { items, response };
+}
+
+/** The last round in which the partner's responses to `author`'s items are revealed. */
+export function latestExchange(c: Conversation, author: Role): (Exchange & { round: number }) | undefined {
+  for (let round = LAST_SITTING; round > 0; round--) {
+    const found = exchange(c, round, author);
+    if (found) return { round, ...found };
+  }
+  return undefined;
+}
+
 /** What the invite shows before the recipient joins: never the initiator's stance. */
 export function inviteView(c: Conversation) {
   return { question: c.question.text };

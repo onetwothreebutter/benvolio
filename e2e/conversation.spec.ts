@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
 import { LAST_SITTING, partnerOf, type NextAction, type Role } from "@/lib/conversation/model";
+import { ROUNDS } from "@/lib/conversation/rounds";
 import { statusLine } from "@/lib/conversation/status";
+import { validSitting } from "@/test/sittings";
 import { joinFromInvite, newPerson, signIn, startBenvolio } from "./support/people";
 import { formError, STANCE } from "./support/screen";
 import { typeSitting } from "./support/sittings";
@@ -40,6 +42,24 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
     );
   }
   const both = (action: NextAction) => ({ initiator: action, recipient: action });
+  /** Checks each person's page shows how their partner responded to their items for a round. */
+  async function expectResponses(round: number) {
+    for (const role of ["initiator", "recipient"] as const) {
+      const phone = phones[role];
+      const response = validSitting(round, partnerOf(role)).respond!;
+      const section = phone.getByRole("region", { name: ROUNDS[round - 1].respond.seen(partnerName[role]) });
+      for (const text of "texts" in response ? response.texts : []) {
+        await expect(section.getByText(text)).toBeVisible();
+      }
+      if (response.kind === "agree") await expect(section.getByText(`${partnerName[role]} doesn't agree.`)).toBeVisible();
+      // The fixtures tag the first item hopeful and the second with nothing.
+      if ("tags" in response) await expect(section.getByText(`It made ${partnerName[role]} feel hopeful.`)).toBeVisible();
+      if (response.kind === "react") {
+        await expect(section.getByText(`${partnerName[role]} didn't pick a feeling for this.`)).toBeVisible();
+      }
+      if (response.kind === "rank") await expect(section.getByText(`${partnerName[role]} ranked this 1st of 3.`)).toBeVisible();
+    }
+  }
 
   // The question is settled before anyone writes.
   await expectNext({
@@ -72,6 +92,7 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
       await expectNext(
         both(sitting === LAST_SITTING ? { kind: "finished" } : { kind: "sit", sitting: sitting + 1 }),
       );
+      if (sitting > 0) await expectResponses(sitting);
     });
   }
 });

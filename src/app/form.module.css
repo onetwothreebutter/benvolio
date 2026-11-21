@@ -64,11 +64,23 @@
   margin: 0;
 }
 
-.quote {
+/* A quote is your partner's words, .mine is something you wrote, and .reply is a line about it. */
+.quote,
+.mine,
+.reply {
   margin: 0;
   padding-left: 0.75rem;
+  white-space: pre-line;
+}
+
+.quote {
   border-left: 3px solid var(--accent);
   font-size: 1.1rem;
+}
+
+.mine {
+  border-left: 3px solid var(--muted);
+  color: var(--muted);
 }
 
 .feelings,
@@ -87,5 +99,40 @@
 }
 
 .feeling {
+  white-space: nowrap;
+}
+
+/* What the partner did with your items, set apart from the form below it. */
+.responses {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.responses h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.list {
+  display: grid;
+  gap: 1.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.list li {
+  display: grid;
+  gap: 0.5rem;
+}
+
+/* Read out by screen readers, not shown. */
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
   white-space: nowrap;
 }
