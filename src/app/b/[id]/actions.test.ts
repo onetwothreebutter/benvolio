@@ -96,9 +96,9 @@ describe("decideQuestion", () => {
 });
 
 describe("submitSitting", () => {
-  const { stance, write } = validSitting(0, "Jane");
+  const { stance, write } = validSitting(0, "Jane") as { stance: string; write: string[] };
   const opening = (fields: { stance?: string; write?: string[] } = { stance, write }, sitting = "0") =>
-    formData({ benvolio_id: ID, sitting, ...fields });
+    formData({ benvolio_id: ID, sitting, question: "Should we get a dog?", ...fields });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -134,7 +134,7 @@ describe("submitSitting", () => {
   it("says what's missing and gives back what was typed", async () => {
     const blank = { stance: "   ", write: ["a", "b", "c"] };
     expect(await submitSitting({}, opening(blank))).toEqual({
-      error: "Please write where you stand.",
+      error: expect.stringContaining("Please write where you stand"),
       input: blank,
     });
     const short = { stance: "Yes", write: ["a", " ", "c"] };
@@ -142,8 +142,41 @@ describe("submitSitting", () => {
       error: expect.stringContaining("all 3"),
       input: short,
     });
-    // Parts the sitting doesn't have are never read.
     expect(await submitSitting({}, opening({ write }))).toMatchObject({ input: { stance: "", write } });
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("reads only the parts the sitting has, with line breaks as typed", async () => {
+    const fields = formData({
+      benvolio_id: ID,
+      sitting: "0",
+      question: "Should we get a dog?",
+      stance: "Yes,\r\nI think so",
+      write,
+      respond: "sneaky",
+    });
+    await expect(submitSitting({}, fields)).rejects.toThrow("redirect");
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({ body: { stance: "Yes,\nI think so", write } }),
+    );
+  });
+
+  it("gives an opening back if the question changed while it was written", async () => {
+    let conversation = startConversation("Should we get a dog this year?");
+    loadBenvolioToWrite.mockResolvedValue({ role: "initiator", partnerName: "Rhonda", conversation });
+    expect(await submitSitting({}, opening())).toEqual({
+      error: expect.stringContaining("“Should we get a dog this year?”"),
+      input: { stance, write },
+      question: "Should we get a dog this year?",
+    });
+    // New wording waiting for a decision.
+    conversation = { ...startConversation("Should we get a dog?"), recipientJoined: true };
+    conversation.question.proposed = "A dog or a cat?";
+    loadBenvolioToWrite.mockResolvedValue({ role: "initiator", partnerName: "Rhonda", conversation });
+    expect(await submitSitting({}, opening())).toEqual({
+      error: expect.stringContaining("Rhonda has suggested new wording"),
+      input: { stance, write },
+    });
     expect(insert).not.toHaveBeenCalled();
   });
 

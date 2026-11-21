@@ -107,6 +107,6 @@ test("the opening explains a blank answer and keeps what was typed", async ({ pa
   await page.getByLabel(STANCE).fill("   ");
   for (let i = 1; i <= 3; i++) await page.getByLabel(`Reason ${i}`).fill(`Reason number ${i}`);
   await page.getByRole("button", { name: "Send" }).click();
-  await expect(formError(page)).toHaveText("Please write where you stand.");
+  await expect(formError(page)).toContainText("Please write where you stand");
   await expect(page.getByLabel("Reason 2")).toHaveValue("Reason number 2");
 });

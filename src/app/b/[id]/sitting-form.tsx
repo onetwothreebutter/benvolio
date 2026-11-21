@@ -12,10 +12,13 @@ export function SittingForm({
   benvolioId,
   sitting,
   partnerName,
+  question,
 }: {
   benvolioId: string;
   sitting: number;
   partnerName: string;
+  /** The question as this page shows it. */
+  question: string;
 }) {
   const [state, action, pending] = useActionState<SitState, FormData>(submitSitting, {});
   const { stance, write } = sittingParts(sitting);
@@ -26,6 +29,7 @@ export function SittingForm({
     <form action={action} className={styles.form}>
       <input type="hidden" name="benvolio_id" value={benvolioId} />
       <input type="hidden" name="sitting" value={sitting} />
+      <input type="hidden" name={FIELD.question} value={state.question ?? question} />
 
       {stance && (
         <>

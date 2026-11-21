@@ -12,12 +12,12 @@ import {
   type ParseResult,
 } from "@/lib/conversation/model";
 import { ITEMS_PER_ROUND } from "@/lib/conversation/rounds";
-import { loadBenvolioToWrite } from "@/lib/db/load-benvolio";
-import { sittingInput, type SittingInput } from "./sitting-input";
 import { isBenvolioId } from "@/lib/db/benvolio-id";
+import { loadBenvolioToWrite } from "@/lib/db/load-benvolio";
 import { newInviteToken } from "@/lib/invites/token";
 import { siteUrl } from "@/lib/site-url";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { FIELD, sittingInput, type SittingInput } from "./sitting-input";
 
 const NOT_RENEWABLE = "There's no invite to renew: they may have joined already.";
 
@@ -69,14 +69,19 @@ export async function decideQuestion(_state: DecideState, form: FormData): Promi
 
 const CHECK_IT = "Please check what you wrote.";
 const INVALID: Record<Extract<ParseResult, { ok: false }>["invalid"], string> = {
-  stance: "Please write where you stand.",
+  stance: `Please write where you stand, in up to ${MAX_ITEM_LENGTH.toLocaleString("en")} characters.`,
   write: `Please write all ${ITEMS_PER_ROUND}, each up to ${MAX_ITEM_LENGTH.toLocaleString("en")} characters.`,
   respond: CHECK_IT,
   sitting: CHECK_IT,
   shape: CHECK_IT,
 };
 
-export type SitState = { error?: string; input?: SittingInput };
+export type SitState = {
+  error?: string;
+  input?: SittingInput;
+  /** The question as it now stands, when it changed under an opening. */
+  question?: string;
+};
 
 /**
  * Sends what this person wrote in their current sitting. If it isn't their
@@ -92,6 +97,23 @@ export async function submitSitting(_state: SitState, form: FormData): Promise<S
   if (!benvolio) redirect(here);
 
   const input = sittingInput(sitting, form);
+  // An opening answers the question as its writer saw it. If that changed
+  // (new wording suggested or accepted meanwhile), give it back, not lose it.
+  const { question } = benvolio.conversation;
+  const opening = sittingParts(sitting).stance;
+  if (opening && form.get(FIELD.question) !== question.text) {
+    return {
+      error: `The question is now “${question.text}”. Check your opening still answers it, then send it.`,
+      input,
+      question: question.text,
+    };
+  }
+  if (opening && question.proposed !== undefined) {
+    return {
+      error: `${benvolio.partnerName} has suggested new wording for the question. Keep a copy of what you wrote, then reload the page to decide.`,
+      input,
+    };
+  }
   const checked = checkSubmission(benvolio.conversation, benvolio.role, sitting, input);
   if (!checked.ok) {
     if ("notYourTurn" in checked) redirect(here);
