@@ -8,6 +8,7 @@ import { requireSignedIn } from "@/lib/auth/session";
 import {
   checkSubmission,
   currentRound,
+  ROLES,
   MAX_ITEM_LENGTH,
   sittingParts,
   type ParseResult,
@@ -80,10 +81,19 @@ export async function deleteBenvolio(form: FormData): Promise<void> {
   const benvolio = await loadBenvolio(id, userId);
   if (benvolio) {
     // Everything else about it (people, writing, invite, emails) cascades.
-    const { error } = await createAdminClient().from("benvolios").delete().eq("id", id);
+    const { data, error } = await createAdminClient()
+      .from("benvolios")
+      .delete()
+      .eq("id", id)
+      .select("id");
     if (error) throw new Error(`Deleting a Benvolio failed: ${error.message}`);
-    const round = currentRound(benvolio.conversation, benvolio.role) as RoundNumber;
-    trackServer(userId, "benvolio_deleted", { benvolio_id: id, round });
+    // Counted once, even if both people delete it at the same moment.
+    if (data.length > 0) {
+      // The round both people had reached: the earlier of their two.
+      const { conversation } = benvolio;
+      const round = Math.min(...ROLES.map((role) => currentRound(conversation, role))) as RoundNumber;
+      trackServer(userId, "benvolio_deleted", { benvolio_id: id, round });
+    }
   }
   redirect("/");
 }
@@ -156,8 +166,9 @@ export async function submitSitting(_state: SitState, form: FormData): Promise<S
   const { error } = await createAdminClient()
     .from("submissions")
     .insert({ benvolio_id: id, sitting, role: benvolio.role, body: checked.submission });
-  // A duplicate means another tab sent this sitting first.
-  if (error?.code === "23505") redirect(here);
+  // A duplicate means another tab sent this sitting first; a missing
+  // participant, that the Benvolio was deleted meanwhile.
+  if (error?.code === "23505" || error?.code === "23503") redirect(here);
   if (error) throw new Error(`Sending a sitting failed: ${error.message}`);
 
   const { respond, write } = parts;

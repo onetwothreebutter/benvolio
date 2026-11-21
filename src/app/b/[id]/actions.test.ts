@@ -5,7 +5,8 @@ import { validSitting } from "@/test/sittings";
 
 const rpc = vi.hoisted(() => vi.fn());
 const insert = vi.hoisted(() => vi.fn());
-const eq = vi.hoisted(() => vi.fn());
+const deleted = vi.hoisted(() => vi.fn());
+const eq = vi.hoisted(() => vi.fn(() => ({ select: deleted })));
 const from = vi.hoisted(() => vi.fn(() => ({ insert, delete: () => ({ eq }) })));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc, from }) }));
 const requireSignedIn = vi.hoisted(() => vi.fn());
@@ -112,7 +113,7 @@ describe("deleteBenvolio", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     requireSignedIn.mockResolvedValue({ userId: "rhonda", email: "r@example.com" });
-    eq.mockResolvedValue({ error: null });
+    deleted.mockResolvedValue({ data: [{ id: ID }], error: null });
   });
 
   const load = (conversation: Conversation | null) =>
@@ -142,6 +143,19 @@ describe("deleteBenvolio", () => {
     deletedInRound(5);
   });
 
+  it("records the round both had reached", async () => {
+    load(submit(revealed(0), "recipient", 0, validSitting(0, "recipient")));
+    await expect(del()).rejects.toThrow("redirect /");
+    deletedInRound(1);
+  });
+
+  it("counts it once when the partner deleted it at the same moment", async () => {
+    load(revealed(0));
+    deleted.mockResolvedValue({ data: [], error: null });
+    await expect(del()).rejects.toThrow("redirect /");
+    expect(trackServer).not.toHaveBeenCalled();
+  });
+
   it("only goes home when it's already gone or not theirs", async () => {
     load(null);
     await expect(del()).rejects.toThrow("redirect /");
@@ -151,7 +165,7 @@ describe("deleteBenvolio", () => {
 
   it("fails loudly if the database does", async () => {
     load(revealed(0));
-    eq.mockResolvedValue({ error: { message: "boom" } });
+    deleted.mockResolvedValue({ data: null, error: { message: "boom" } });
     await expect(del()).rejects.toThrow("boom");
     expect(trackServer).not.toHaveBeenCalled();
   });
@@ -249,8 +263,11 @@ describe("submitSitting", () => {
     expect(insert).not.toHaveBeenCalled();
   });
 
-  it("treats a sitting another tab already sent as sent", async () => {
+  it("reloads when another tab already sent the sitting, or it was deleted", async () => {
     insert.mockResolvedValue({ error: { code: "23505", message: "duplicate key" } });
+    await expect(submitSitting({}, opening())).rejects.toThrow("redirect");
+    // Deleted between loading it and saving.
+    insert.mockResolvedValue({ error: { code: "23503", message: "foreign key" } });
     await expect(submitSitting({}, opening())).rejects.toThrow("redirect");
     expect(trackServer).not.toHaveBeenCalled();
     insert.mockResolvedValue({ error: { code: "XX000", message: "boom" } });

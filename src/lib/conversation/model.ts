@@ -18,7 +18,7 @@ import { ITEMS_PER_ROUND, ROUNDS, type ResponseKind, type Round } from "./rounds
  * as it now stands.
  */
 
-const ROLES = ["initiator", "recipient"] as const;
+export const ROLES = ["initiator", "recipient"] as const;
 export type Role = (typeof ROLES)[number];
 
 export const LAST_SITTING = ROUNDS.length;
