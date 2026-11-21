@@ -14,3 +14,8 @@ export function siteUrl(): string {
   if (process.env.VERCEL) throw new Error("Set SITE_URL (see .env.example)");
   return "http://localhost:3000";
 }
+
+/** The link to a Benvolio's page, as sent in emails. */
+export function benvolioUrl(id: string): string {
+  return `${siteUrl()}/b/${id}`;
+}
