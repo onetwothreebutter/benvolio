@@ -29,6 +29,14 @@ production (see docs/auth.md) and raises the rate limits so parallel tests
 don't trip them. Each test makes its own people with unique addresses, so
 nothing needs resetting between runs.
 
+## How the app's own emails work in tests
+
+The app sends turn emails through Resend's API. Under test, `RESEND_API_URL`
+points it at `support/fake-resend.ts`, a stand-in Playwright starts on :3101.
+It checks each request as Resend would (API key, idempotency key, fields)
+and delivers it to Mailpit, so `support/mail.ts` reads turn emails the same
+way as sign-in codes, by recipient and subject.
+
 ## What's covered
 
 - `sign-in.spec.ts`: code and link sign-in, the name step, signing out on one
@@ -42,6 +50,9 @@ nothing needs resetting between runs.
 - `conversation.spec.ts`: rewording the question (used or kept), then a whole
   Benvolio, both people, all six sittings to the finish, checking what each
   person's page says at every turn.
+- `emails.spec.ts`: turn emails to the right person at each step (ready to
+  begin, partner waiting, writing to read, new wording, wording settled),
+  never to the person acting, each with a link that opens the Benvolio.
 - `dead-ends.spec.ts`: 404s, signed-out redirects, broken links, unsafe `next`.
 
 Not covered, as each needs a fault or timing the tests can't arrange: the

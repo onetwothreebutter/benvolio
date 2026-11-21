@@ -23,7 +23,8 @@ export function emailEnabled(): boolean {
 export async function sendEmail({ to, subject, html, text, tags, idempotencyKey }: Email): Promise<void> {
   const key = process.env.RESEND_API_KEY;
   if (!key) throw new Error("Set RESEND_API_KEY (see .env.example)");
-  const response = await fetch("https://api.resend.com/emails", {
+  // RESEND_API_URL is for the end-to-end tests' stand-in only (e2e/support/fake-resend.ts).
+  const response = await fetch(`${process.env.RESEND_API_URL || "https://api.resend.com"}/emails`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${key}`,
