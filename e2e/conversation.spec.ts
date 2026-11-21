@@ -61,6 +61,26 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
     }
   }
 
+  /** Checks each person's finished page leads with the points both agreed and their top compromises. */
+  async function expectSummary() {
+    for (const role of ["initiator", "recipient"] as const) {
+      const phone = phones[role];
+      const agreed = phone.getByRole("region", { name: "What you agree on" });
+      // The fixtures mark items 1 and 3 #agree and rank item 2 first.
+      const writtenIn = (kind: string) => ROUNDS.findIndex((r) => r.respond.kind === kind);
+      const [accord, compromises] = [writtenIn("agree"), writtenIn("rank")];
+      for (const author of [role, partnerOf(role)]) {
+        const points = validSitting(accord, author).write!;
+        await expect(agreed.getByText(points[0])).toBeVisible();
+        await expect(agreed.getByText(points[1])).toHaveCount(0);
+      }
+      const top = phone.getByRole("region", { name: "Compromises" }).getByRole("listitem");
+      await expect(top.first()).toContainText(validSitting(compromises, partnerOf(role)).write![1]);
+      await expect(top.nth(1)).toContainText(validSitting(compromises, role).write![1]);
+      await expect(phone.getByRole("region", { name: ROUNDS[LAST_SITTING - 1].respond.seen(partnerName[role]) })).toHaveCount(0);
+    }
+  }
+
   // The question is settled before anyone writes.
   await expectNext({
     initiator: { kind: "decide_question", proposed: "Should we get a dog this year?" },
@@ -92,7 +112,8 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
       await expectNext(
         both(sitting === LAST_SITTING ? { kind: "finished" } : { kind: "sit", sitting: sitting + 1 }),
       );
-      if (sitting > 0) await expectResponses(sitting);
+      if (sitting === LAST_SITTING) await expectSummary();
+      else if (sitting > 0) await expectResponses(sitting);
     });
   }
 });

@@ -165,6 +165,54 @@ export function latestExchange(c: Conversation, author: Role): (Exchange & { rou
   return undefined;
 }
 
+/** An item from the summary, and whether the person viewing it wrote it. */
+export type SummaryItem = { text: string; mine: boolean };
+
+/** What both people keep once a Benvolio is finished, as one of them sees it. */
+export type Summary = {
+  stances: SummaryItem[];
+  /** Points of agreement the other person marked #agree, and those they didn't. */
+  agreed: SummaryItem[];
+  differ: SummaryItem[];
+  /** Each person's compromises, best ranked first: undefined if no round ranks them. */
+  compromises?: { mine: string[]; partner: string[] };
+};
+
+/**
+ * The finished Benvolio's summary for `viewer`, or undefined until it is
+ * finished. It gathers whatever the rounds ask: agree marks split points into
+ * agreed and not, and ranks order items best first.
+ */
+export function summary(c: Conversation, viewer: Role): Summary | undefined {
+  if (!isFinished(c)) return undefined;
+  const opening = visibleSubmissions(c, 0, viewer);
+  const result: Summary = {
+    stances: [
+      { text: opening.mine?.stance, mine: true },
+      { text: opening.partner?.stance, mine: false },
+    ].filter((s): s is SummaryItem => s.text !== undefined),
+    agreed: [],
+    differ: [],
+  };
+  const ranked: Partial<Record<Role, string[]>> = {};
+  for (let round = 1; round <= LAST_SITTING; round++) {
+    for (const author of [viewer, partnerOf(viewer)]) {
+      const found = exchange(c, round, author);
+      if (!found) continue;
+      const { items, response } = found;
+      const mine = author === viewer;
+      if (response.kind === "agree") {
+        items.forEach((text, i) => (response.agree[i] ? result.agreed : result.differ).push({ text, mine }));
+      } else if (response.kind === "rank") {
+        ranked[author] = [...items.keys()].sort((a, b) => response.ranks[a] - response.ranks[b]).map((i) => items[i]);
+      }
+    }
+  }
+  const { [viewer]: mine, [partnerOf(viewer)]: partner } = ranked;
+  if (mine && partner) result.compromises = { mine, partner };
+  return result;
+}
+
 /** What the invite shows before the recipient joins: never the initiator's stance. */
 export function inviteView(c: Conversation) {
   return { question: c.question.text };

@@ -18,6 +18,17 @@
   }
 }
 
+/* Paper is white, so print in the light colours whatever the phone's theme. */
+@media print {
+  :root {
+    color-scheme: light;
+    --bg: #fff;
+    --text: #2b2420;
+    --muted: #6b5f57;
+    --accent: #a84b29;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
