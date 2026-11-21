@@ -36,7 +36,11 @@ async function sendCode(form: FormData, next: string): Promise<SignInState> {
     const tooMany = error.status === 429;
     // Supabase's message names the cause (SMTP refused, template error) and
     // never includes the address, so it is safe to report.
-    if (!tooMany) Sentry.captureMessage(`Sign-in email failed: ${error.status} ${error.message}`, "error");
+    if (!tooMany) {
+      const reason = `Sign-in email failed: ${error.status} ${error.message}`;
+      console.error(reason); // Shows in Vercel's runtime logs even without Sentry.
+      Sentry.captureMessage(reason, "error");
+    }
     return {
       step: "email",
       email,
