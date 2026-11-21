@@ -30,7 +30,7 @@ export function SittingForm({
   partnerName: string;
   /** The question as this page shows it. */
   question: string;
-  /** Required in every sitting but the opening. */
+  /** What this sitting responds to: required in every sitting but the opening. */
   revealed?: Revealed;
 }) {
   const [state, action, pending] = useActionState<SitState, FormData>(submitSitting, {});
@@ -57,7 +57,7 @@ export function SittingForm({
             <Respond
               key={i}
               kind={respond.kind}
-              label={`${partnerName}'s ${respond.itemLabel.toLowerCase()} ${i + 1}`}
+              label={`${partnerName}'s ${respond.itemName} ${i + 1}`}
               item={item}
               index={i}
               typed={typed?.respond}
@@ -156,9 +156,48 @@ function Respond({
         checked={typedValue("tags") as string[] | undefined}
       />
     ),
-    // Agreeing and ranking come in the next change; the page doesn't offer them yet.
-    agree: () => null,
-    ranks: () => null,
+    agree: () => (
+      <fieldset className={styles.choices} aria-describedby={id}>
+        <legend className={styles.hint}>Do you agree with {label}?</legend>
+        {[
+          ["agree", "Agree"],
+          ["disagree", "Disagree"],
+        ].map(([value, text]) => (
+          <label key={value}>
+            <input
+              type="radio"
+              name={FIELD.respond("agree", index)}
+              value={value}
+              required
+              defaultChecked={typedValue("agree") === (value === "agree")}
+            />{" "}
+            {text}
+          </label>
+        ))}
+      </fieldset>
+    ),
+    ranks: () => (
+      <select
+        // React applies a select's defaultValue only when it mounts, so a new
+        // key brings back what was picked when the form comes back with an error.
+        key={String(typedValue("ranks"))}
+        name={FIELD.respond("ranks", index)}
+        required
+        aria-label={`Your rank for ${label}`}
+        aria-describedby={id}
+        defaultValue={String(typedValue("ranks") ?? "")}
+        className={styles.input}
+      >
+        <option value="" disabled>
+          Rank it
+        </option>
+        {Array.from({ length: ITEMS_PER_ROUND }, (_, r) => (
+          <option key={r} value={r + 1}>
+            {r + 1}
+          </option>
+        ))}
+      </select>
+    ),
   };
   return (
     <div className={styles.form}>

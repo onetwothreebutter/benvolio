@@ -21,6 +21,8 @@ export type Round = {
   };
   respond: {
     kind: ResponseKind;
+    /** What one of the partner's items is called, in "Rhonda's reason 1". */
+    itemName: string;
     prompt: string;
     help?: string;
   };
@@ -36,6 +38,7 @@ export const ROUNDS: readonly Round[] = [
     },
     respond: {
       kind: "rephrase",
+      itemName: "reason",
       prompt: "Rephrase each of your partner's reasons in your own words.",
       help: "To show that you're listening to each other, you'll each rephrase the other's reasons.",
     },
@@ -49,6 +52,7 @@ export const ROUNDS: readonly Round[] = [
     },
     respond: {
       kind: "answer",
+      itemName: "question",
       prompt: "Answer your partner's questions honestly.",
       help: "How can you answer in a way that helps them understand your point of view? You can tag each question with how it made you feel.",
     },
@@ -62,6 +66,7 @@ export const ROUNDS: readonly Round[] = [
     },
     respond: {
       kind: "react",
+      itemName: "thing to know",
       prompt: "Read what your partner wanted you to know.",
       help: "Take your time. You can tag each one with how it made you feel.",
     },
@@ -75,6 +80,7 @@ export const ROUNDS: readonly Round[] = [
     },
     respond: {
       kind: "agree",
+      itemName: "point of agreement",
       prompt: "Do you agree with each of these?",
     },
   },
@@ -87,6 +93,7 @@ export const ROUNDS: readonly Round[] = [
     },
     respond: {
       kind: "rank",
+      itemName: "compromise",
       prompt: "Rank your partner's compromises, 1 being the one you like most.",
     },
   },

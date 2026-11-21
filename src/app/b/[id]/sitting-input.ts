@@ -11,15 +11,6 @@ export const FIELD = {
   respond: (field: ResponseField, i: number) => `${field}.${i}`,
 } as const;
 
-/** The response fields the form has controls for so far. */
-const BUILT: ReadonlySet<ResponseField> = new Set(["texts", "tags"]);
-
-/** Whether the form can take this sitting yet. Agreeing and ranking come next. */
-export function formReady(sitting: number): boolean {
-  const { respond } = sittingParts(sitting);
-  return !respond || RESPONSE_FIELDS[respond.kind].every((field) => BUILT.has(field));
-}
-
 /** What was typed in a sitting's form, before the model checks it. */
 export type SittingInput = {
   stance?: string;
@@ -35,7 +26,10 @@ const READ: Record<ResponseField, (form: FormData, name: string) => unknown> = {
     const mark = form.get(name);
     return mark === "agree" ? true : mark === "disagree" ? false : undefined;
   },
-  ranks: (form, name) => Number(form.get(name)),
+  ranks: (form, name) => {
+    const rank = form.get(name);
+    return typeof rank === "string" && /^\d+$/.test(rank) ? Number(rank) : undefined;
+  },
 };
 
 /**

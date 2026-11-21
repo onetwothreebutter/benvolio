@@ -48,11 +48,8 @@ Not covered, as each needs a fault or timing the tests can't arrange: the
 global error page, "We couldn't send the email", the "Too many tries" message,
 and opening the emailed link in a different browser from the one that asked.
 
-The first three sittings are typed into the page. The screens for reacting,
-agreeing and ranking aren't built yet, so `conversation.spec.ts` puts later
-sittings into the database
-(`support/sittings.ts`, using the fixtures the unit tests check against the
-model's parser). When those screens land, switch it to typing into them.
+Every sitting is typed into the page (`support/sittings.ts`), using the
+fixtures the unit tests check against the model's parser.
 
 Selectors are roles and labels, as people see the page, so restyling doesn't
 break the tests; changing visible wording does.

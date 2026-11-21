@@ -187,15 +187,11 @@ describe("sittingParts", () => {
     expect(sittingParts(2)).toEqual({
       stance: false,
       write: { ...ROUNDS[2].write, round: 3 },
-      respond: { ...ROUNDS[1].respond, round: 2, itemLabel: ROUNDS[1].write.itemLabel },
+      respond: { ...ROUNDS[1].respond, round: 2 },
     });
     expect(sittingParts(ROUNDS.length)).toEqual({
       stance: false,
-      respond: {
-        ...ROUNDS[ROUNDS.length - 1].respond,
-        round: ROUNDS.length,
-        itemLabel: ROUNDS[ROUNDS.length - 1].write.itemLabel,
-      },
+      respond: { ...ROUNDS[ROUNDS.length - 1].respond, round: ROUNDS.length },
     });
   });
 });

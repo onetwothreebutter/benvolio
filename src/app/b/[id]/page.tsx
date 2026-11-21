@@ -15,7 +15,6 @@ import styles from "../../form.module.css";
 import { DecideQuestion } from "./decide-question";
 import { RenewInvite } from "./renew-invite";
 import { SittingForm, type Revealed } from "./sitting-form";
-import { formReady } from "./sitting-input";
 
 export const metadata: Metadata = { title: "Your Benvolio" };
 
@@ -47,7 +46,7 @@ export default async function BenvolioPage({ params }: { params: Promise<{ id: s
           openingWritten={hasSubmitted(conversation, 0, "initiator")}
         />
       )}
-      {action.kind === "sit" && formReady(action.sitting) && (
+      {action.kind === "sit" && (
         <SittingForm
           benvolioId={id}
           sitting={action.sitting}
