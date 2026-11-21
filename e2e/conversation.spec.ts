@@ -95,6 +95,16 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
       if (sitting > 0) await expectResponses(sitting);
     });
   }
+
+  // Every round stays readable, both ways, from the link on the page.
+  await page.getByRole("link", { name: "See every round" }).click();
+  await expect(page).toHaveURL(`/b/${started.id}/rounds`);
+  for (const [i, round] of ROUNDS.entries()) {
+    await expect(page.getByRole("heading", { name: `Round ${i + 1} of ${ROUNDS.length}: ${round.title}` })).toBeVisible();
+    await expect(page.getByRole("region", { name: round.respond.seen("Rhonda") })).toBeVisible();
+    await expect(page.getByRole("region", { name: round.respond.given("Rhonda") })).toBeVisible();
+  }
+  await expect(page.getByRole("region", { name: ROUNDS[0].respond.given("Rhonda") })).toContainText("initiator rephrase 1");
 });
 
 test("the initiator can keep their own wording", async ({ page, anotherPhone }, testInfo) => {

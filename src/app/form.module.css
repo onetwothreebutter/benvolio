@@ -102,14 +102,25 @@
   white-space: nowrap;
 }
 
-/* What the partner did with your items, set apart from the form below it. */
+/* One person's items with the other's responses. */
 .responses {
   display: grid;
   gap: 0.75rem;
+}
+
+/* Set apart from what follows, such as the form. */
+.apart {
+  display: grid;
+  gap: 1.25rem;
   margin-bottom: 2rem;
 }
 
-.responses h2 {
+.apart > h2 {
+  margin: 0;
+}
+
+.responses h2,
+.responses h3 {
   margin: 0;
   font-size: 1.1rem;
 }
@@ -125,6 +136,13 @@
 .list li {
   display: grid;
   gap: 0.5rem;
+}
+
+/* Whose words follow, on a line of its own. */
+.who {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--muted);
 }
 
 /* Read out by screen readers, not shown. */

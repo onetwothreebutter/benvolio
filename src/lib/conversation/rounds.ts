@@ -27,6 +27,8 @@ export type Round = {
     help?: string;
     /** Heads the partner's responses to your items, once they're revealed. */
     seen: (partner: string) => string;
+    /** Heads your responses to the partner's items. */
+    given: (partner: string) => string;
   };
 };
 
@@ -44,6 +46,7 @@ export const ROUNDS: readonly Round[] = [
       prompt: "Rephrase each of your partner's reasons in your own words.",
       help: "To show that you're listening to each other, you'll each rephrase the other's reasons.",
       seen: (partner) => `Your reasons, in ${partner}'s words`,
+      given: (partner) => `${partner}'s reasons, in your words`,
     },
   },
   {
@@ -59,6 +62,7 @@ export const ROUNDS: readonly Round[] = [
       prompt: "Answer your partner's questions honestly.",
       help: "How can you answer in a way that helps them understand your point of view? You can tag each question with how it made you feel.",
       seen: (partner) => `${partner}'s answers to your questions`,
+      given: (partner) => `Your answers to ${partner}'s questions`,
     },
   },
   {
@@ -74,6 +78,7 @@ export const ROUNDS: readonly Round[] = [
       prompt: "Read what your partner wanted you to know.",
       help: "Take your time. You can tag each one with how it made you feel.",
       seen: (partner) => `How ${partner} felt about what you shared`,
+      given: (partner) => `How you felt about what ${partner} shared`,
     },
   },
   {
@@ -88,6 +93,7 @@ export const ROUNDS: readonly Round[] = [
       itemName: "point of agreement",
       prompt: "Do you agree with each of these?",
       seen: (partner) => `Whether ${partner} agrees with you`,
+      given: (partner) => `Whether you agree with ${partner}`,
     },
   },
   {
@@ -102,6 +108,7 @@ export const ROUNDS: readonly Round[] = [
       itemName: "compromise",
       prompt: "Rank your partner's compromises, 1 being the one you like most.",
       seen: (partner) => `How ${partner} ranked your compromises`,
+      given: (partner) => `How you ranked ${partner}'s compromises`,
     },
   },
 ];

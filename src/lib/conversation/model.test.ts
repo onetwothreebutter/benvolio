@@ -9,6 +9,8 @@ import {
   isRevealed,
   join,
   latestExchange,
+  sharedRounds,
+  stances,
   nextAction,
   startConversation,
   submit,
@@ -16,24 +18,13 @@ import {
   parseSubmission,
   sittingParts,
   visibleSubmissions,
-  type Conversation,
-  type Role,
   type Submission,
   type Tags,
 } from "./model";
 import { ROUNDS } from "./rounds";
-import { three, validSitting } from "@/test/sittings";
+import { bothThrough, sit, three, validSitting } from "@/test/sittings";
 
 const noTags: Tags = [[], [], []];
-
-function sit(c: Conversation, role: Role, sitting: number) {
-  return submit(c, role, sitting, validSitting(sitting, role));
-}
-
-function bothThrough(c: Conversation, lastSitting: number) {
-  for (let s = 0; s <= lastSitting; s++) c = sit(sit(c, "initiator", s), "recipient", s);
-  return c;
-}
 
 const started = () => startConversation("  Should we get a dog?  ");
 
@@ -219,6 +210,24 @@ describe("responses to your writing", () => {
     expect(latestExchange(c, "recipient")).toEqual({ round: 2, ...exchange(c, 2, "recipient") });
     expect(latestExchange(c, "initiator")?.round).toBe(2);
     expect(exchange(c, 3, "recipient")).toBeUndefined();
+  });
+
+  it("lists a round both ways once both people have responded to it", () => {
+    let c = bothThrough(join(started()), 1);
+    c = sit(c, "recipient", 2);
+    expect(sharedRounds(c, "initiator")).toEqual([
+      { round: 1, yours: exchange(c, 1, "initiator"), theirs: exchange(c, 1, "recipient") },
+    ]);
+    expect(sharedRounds(bothThrough(join(started()), 5), "recipient").map((r) => r.round)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("shows both stances only once both openings are revealed", () => {
+    const c = sit(join(started()), "initiator", 0);
+    expect(stances(c, "initiator")).toBeUndefined();
+    expect(stances(sit(c, "recipient", 0), "recipient")).toEqual({
+      yours: "recipient stance",
+      theirs: "initiator stance",
+    });
   });
 
   it("has nothing for the opening, which responds to nothing", () => {

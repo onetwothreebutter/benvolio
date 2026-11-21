@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import {
   hasSubmitted,
   latestExchange,
@@ -8,13 +8,12 @@ import {
   type Conversation,
   type Role,
 } from "@/lib/conversation/model";
+import { ROUNDS } from "@/lib/conversation/rounds";
 import { statusLine } from "@/lib/conversation/status";
-import { withNext } from "@/lib/auth/safe-next";
-import { getProfile, requireSignedIn } from "@/lib/auth/session";
-import { loadBenvolio } from "@/lib/db/load-benvolio";
 import styles from "../../form.module.css";
 import { DecideQuestion } from "./decide-question";
-import { PartnerResponses } from "./partner-responses";
+import { ExchangeList } from "./exchange-list";
+import { loadBenvolioPage } from "./load-page";
 import { RenewInvite } from "./renew-invite";
 import { SittingForm, type Revealed } from "./sitting-form";
 
@@ -24,11 +23,7 @@ export const metadata: Metadata = { title: "Your Benvolio" };
 export default async function BenvolioPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const here = `/b/${id}`;
-  const { userId } = await requireSignedIn(here);
-  const [profile, benvolio] = await Promise.all([getProfile(userId), loadBenvolio(id, userId)]);
-  if (!profile) redirect(withNext("/welcome", here));
-  if (!benvolio) notFound();
-  const { conversation, role, partnerName } = benvolio;
+  const { conversation, role, partnerName } = await loadBenvolioPage(id, here);
   const action = nextAction(conversation, role);
   const responses = latestExchange(conversation, role);
   return (
@@ -42,7 +37,19 @@ export default async function BenvolioPage({ params }: { params: Promise<{ id: s
         </>
       )}
       <p>{statusLine(action, partnerName)}</p>
-      {responses && <PartnerResponses exchange={responses} partnerName={partnerName} />}
+      {responses && (
+        <div className={styles.apart}>
+          <ExchangeList
+            heading={ROUNDS[responses.round - 1].respond.seen(partnerName)}
+            exchange={responses}
+            author={{ you: true }}
+            responder={{ you: false, name: partnerName }}
+          />
+          <Link href={`${here}/rounds`} className={styles.link}>
+            See every round
+          </Link>
+        </div>
+      )}
       {action.kind === "decide_question" && (
         <DecideQuestion
           benvolioId={id}

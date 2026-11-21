@@ -42,6 +42,10 @@ nothing needs resetting between runs.
 - `conversation.spec.ts`: rewording the question (used or kept), then a whole
   Benvolio, both people, all six sittings to the finish, checking what each
   person's page says at every turn.
+- `rounds.spec.ts`: the every-round page from both phones as a Benvolio gets
+  going: empty before the openings, then the stances, a partner's response
+  kept hidden until both have sent that sitting, then round 1 from each side;
+  strangers get a 404 and signed-out people are sent to sign in.
 - `dead-ends.spec.ts`: 404s, signed-out redirects, broken links, unsafe `next`.
 
 Not covered, as each needs a fault or timing the tests can't arrange: the
