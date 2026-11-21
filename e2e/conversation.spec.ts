@@ -46,11 +46,13 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
   async function expectResponses(round: number) {
     for (const role of ["initiator", "recipient"] as const) {
       const phone = phones[role];
-      await expect(phone.getByRole("heading", { name: ROUNDS[round - 1].respond.seen(partnerName[role]) })).toBeVisible();
       const response = validSitting(round, partnerOf(role)).respond!;
+      const section = phone.getByRole("region", { name: ROUNDS[round - 1].respond.seen(partnerName[role]) });
       for (const text of "texts" in response ? response.texts : []) {
-        await expect(phone.getByText(text, { exact: true })).toBeVisible();
+        await expect(section.getByText(text)).toBeVisible();
       }
+      if (response.kind === "agree") await expect(section.getByText(`${partnerName[role]} doesn't agree.`)).toBeVisible();
+      if (response.kind === "rank") await expect(section.getByText(`${partnerName[role]} ranked this 1st of 3.`)).toBeVisible();
     }
   }
 

@@ -28,9 +28,7 @@ export function isFeeling(value: unknown): boolean {
 
 const LABELS: ReadonlyMap<string, string> = new Map(FEELINGS.map((f) => [f.slug, f.label]));
 
-/** The label shown for a stored feeling. */
+/** The label shown for a stored feeling; the slug itself if it's no longer offered. */
 export function feelingLabel(slug: string): string {
-  const label = LABELS.get(slug);
-  if (label === undefined) throw new Error(`Unknown feeling: ${slug}`);
-  return label;
+  return LABELS.get(slug) ?? slug;
 }

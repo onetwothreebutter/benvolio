@@ -73,7 +73,7 @@ export const ROUNDS: readonly Round[] = [
       itemName: "thing to know",
       prompt: "Read what your partner wanted you to know.",
       help: "Take your time. You can tag each one with how it made you feel.",
-      seen: (partner) => `How what you shared made ${partner} feel`,
+      seen: (partner) => `How ${partner} felt about what you shared`,
     },
   },
   {
@@ -87,7 +87,7 @@ export const ROUNDS: readonly Round[] = [
       kind: "agree",
       itemName: "point of agreement",
       prompt: "Do you agree with each of these?",
-      seen: (partner) => `Does ${partner} agree?`,
+      seen: (partner) => `Whether ${partner} agrees with you`,
     },
   },
   {

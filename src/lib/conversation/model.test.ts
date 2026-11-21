@@ -213,6 +213,14 @@ describe("responses to your writing", () => {
     });
   });
 
+  it("keeps showing the last revealed round while the next one is only half written", () => {
+    let c = bothThrough(join(started()), 2);
+    c = sit(c, "initiator", 3);
+    expect(latestExchange(c, "recipient")).toEqual({ round: 2, ...exchange(c, 2, "recipient") });
+    expect(latestExchange(c, "initiator")?.round).toBe(2);
+    expect(exchange(c, 3, "recipient")).toBeUndefined();
+  });
+
   it("has nothing for the opening, which responds to nothing", () => {
     expect(exchange(bothThrough(join(started()), 0), 0, "initiator")).toBeUndefined();
   });
