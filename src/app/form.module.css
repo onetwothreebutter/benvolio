@@ -109,12 +109,22 @@
   margin-bottom: 2rem;
 }
 
+.responses h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
 .list {
   display: grid;
   gap: 1.25rem;
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+.list li {
+  display: grid;
+  gap: 0.5rem;
 }
 
 /* Read out by screen readers, not shown. */

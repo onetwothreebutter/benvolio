@@ -19,13 +19,13 @@ export function PartnerResponses({
   const id = `responses-${round}`;
   return (
     <section aria-labelledby={id} className={styles.responses}>
-      <h2 id={id} className={styles.label}>
+      <h2 id={id}>
         {ROUNDS[round - 1].respond.seen(partnerName)}
       </h2>
       {/* Safari stops announcing a list once its bullets are styled away. */}
       <ol role="list" className={styles.list}>
         {items.map((item, i) => (
-          <li key={i} className={styles.form}>
+          <li key={i}>
             <p className={styles.mine}>
               <span className={styles.visuallyHidden}>You wrote: </span>
               {item}
@@ -60,11 +60,11 @@ function ResponseTo({ response, index, partnerName }: { response: Response; inde
         </p>
       )}
       {feelings.length > 0 ? (
-        <p className={styles.hint}>
+        <p className={`${styles.hint} ${styles.reply}`}>
           It made {partnerName} feel {andList.format(feelings.map((slug) => feelingLabel(slug).toLowerCase()))}.
         </p>
       ) : (
-        response.kind === "react" && <p className={styles.hint}>{partnerName} didn&apos;t pick a feeling for this.</p>
+        response.kind === "react" && <p className={`${styles.hint} ${styles.reply}`}>{partnerName} didn&apos;t pick a feeling for this.</p>
       )}
     </>
   );

@@ -52,6 +52,11 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
         await expect(section.getByText(text)).toBeVisible();
       }
       if (response.kind === "agree") await expect(section.getByText(`${partnerName[role]} doesn't agree.`)).toBeVisible();
+      // The fixtures tag the first item hopeful and the second with nothing.
+      if ("tags" in response) await expect(section.getByText(`It made ${partnerName[role]} feel hopeful.`)).toBeVisible();
+      if (response.kind === "react") {
+        await expect(section.getByText(`${partnerName[role]} didn't pick a feeling for this.`)).toBeVisible();
+      }
       if (response.kind === "rank") await expect(section.getByText(`${partnerName[role]} ranked this 1st of 3.`)).toBeVisible();
     }
   }
