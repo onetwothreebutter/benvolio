@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  checkSubmission,
   currentSitting,
   decideQuestion,
   inviteView,
@@ -11,6 +12,7 @@ import {
   submit,
   TurnError,
   parseSubmission,
+  sittingParts,
   visibleSubmissions,
   type Conversation,
   type Role,
@@ -176,6 +178,36 @@ describe("taking turns", () => {
     const before = structuredClone(c);
     sit(c, "initiator", 0);
     expect(c).toEqual(before);
+  });
+});
+
+describe("sittingParts", () => {
+  it("asks for a stance only in the opening, and pairs each response with the next round", () => {
+    expect(sittingParts(0)).toEqual({ stance: true, write: { ...ROUNDS[0].write, round: 1 } });
+    expect(sittingParts(2)).toEqual({
+      stance: false,
+      write: { ...ROUNDS[2].write, round: 3 },
+      respond: { ...ROUNDS[1].respond, round: 2 },
+    });
+    expect(sittingParts(ROUNDS.length)).toEqual({
+      stance: false,
+      respond: { ...ROUNDS[ROUNDS.length - 1].respond, round: ROUNDS.length },
+    });
+  });
+});
+
+describe("checkSubmission", () => {
+  it("says whether it's this person's turn before checking what they wrote", () => {
+    const c = startConversation("Should we get a dog?");
+    expect(checkSubmission(c, "initiator", 1, validSitting(1, "x"))).toEqual({
+      ok: false,
+      notYourTurn: true,
+    });
+    expect(checkSubmission(c, "initiator", 0, {})).toEqual({ ok: false, invalid: "stance" });
+    expect(checkSubmission(c, "initiator", 0, validSitting(0, "x"))).toEqual({
+      ok: true,
+      submission: validSitting(0, "x"),
+    });
   });
 });
 

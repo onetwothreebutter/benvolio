@@ -8,10 +8,11 @@ import { loadBenvolio } from "@/lib/db/load-benvolio";
 import styles from "../../form.module.css";
 import { DecideQuestion } from "./decide-question";
 import { RenewInvite } from "./renew-invite";
+import { SittingForm } from "./sitting-form";
 
 export const metadata: Metadata = { title: "Your Benvolio" };
 
-/** The conversation's home. The writing screens come in the next change. */
+/** The conversation's home: what happens next, and where each sitting is written. */
 export default async function BenvolioPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const here = `/b/${id}`;
@@ -37,6 +38,15 @@ export default async function BenvolioPage({ params }: { params: Promise<{ id: s
           benvolioId={id}
           proposed={action.proposed}
           openingWritten={hasSubmitted(conversation, 0, "initiator")}
+        />
+      )}
+      {/* Responding to a round comes in the next change. */}
+      {action.kind === "sit" && action.sitting === 0 && (
+        <SittingForm
+          benvolioId={id}
+          sitting={action.sitting}
+          partnerName={partnerName}
+          question={conversation.question.text}
         />
       )}
     </main>

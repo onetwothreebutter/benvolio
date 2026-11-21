@@ -1,7 +1,9 @@
 import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { partnerOf } from "@/lib/conversation/model";
-import { isBenvolioId } from "./benvolio-id";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { isBenvolioId } from "./benvolio-id";
 import {
   toConversation,
   type BenvolioRow,
@@ -14,8 +16,19 @@ import {
  * security. Null if it doesn't exist or they aren't in it.
  */
 export async function loadBenvolio(id: string, userId: string) {
+  return readBenvolio(await createClient(), id, userId);
+}
+
+/**
+ * The whole Benvolio, partner's unrevealed writing included, for checking a
+ * write against the turn-taking rules. Never show it: use loadBenvolio for that.
+ */
+export function loadBenvolioToWrite(id: string, userId: string) {
+  return readBenvolio(createAdminClient(), id, userId);
+}
+
+async function readBenvolio(supabase: SupabaseClient, id: string, userId: string) {
   if (!isBenvolioId(id)) return null;
-  const supabase = await createClient();
   // Three queries: submissions reference participants, not benvolios, so
   // PostgREST can't embed them in one select.
   const [benvolio, participants, submissions] = await Promise.all([

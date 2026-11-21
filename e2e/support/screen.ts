@@ -10,3 +10,6 @@ export const NOT_FOUND = "We couldn't find that page";
 export function formError(page: Page) {
   return page.getByRole("main").getByRole("alert");
 }
+
+/** The opening's stance field. */
+export const STANCE = "Where do you stand?";

@@ -2,11 +2,22 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { trackServer } from "@/lib/analytics/server";
+import type { RoundNumber } from "@/lib/analytics/events";
 import { requireSignedIn } from "@/lib/auth/session";
+import {
+  checkSubmission,
+  MAX_ITEM_LENGTH,
+  sittingParts,
+  type ParseResult,
+} from "@/lib/conversation/model";
+import { ITEMS_PER_ROUND } from "@/lib/conversation/rounds";
 import { isBenvolioId } from "@/lib/db/benvolio-id";
+import { loadBenvolioToWrite } from "@/lib/db/load-benvolio";
 import { newInviteToken } from "@/lib/invites/token";
 import { siteUrl } from "@/lib/site-url";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { FIELD, sittingInput, text, type SittingInput } from "./sitting-input";
 
 const NOT_RENEWABLE = "There's no invite to renew: they may have joined already.";
 
@@ -55,3 +66,77 @@ export async function decideQuestion(_state: DecideState, form: FormData): Promi
   }
   redirect(here);
 }
+
+const CHECK_IT = "Please check what you wrote.";
+const INVALID: Record<Extract<ParseResult, { ok: false }>["invalid"], string> = {
+  stance: `Please write where you stand, in up to ${MAX_ITEM_LENGTH.toLocaleString("en")} characters.`,
+  write: `Please write all ${ITEMS_PER_ROUND}, each up to ${MAX_ITEM_LENGTH.toLocaleString("en")} characters.`,
+  respond: CHECK_IT,
+  sitting: CHECK_IT,
+  shape: CHECK_IT,
+};
+
+export type SitState = {
+  error?: string;
+  input?: SittingInput;
+  /** The question as it now stands, when it changed under an opening. */
+  question?: string;
+};
+
+/**
+ * Sends what this person wrote in their current sitting. If it isn't their
+ * turn for that sitting (another tab sent it, or the page is stale), the page
+ * reloads to show where things stand.
+ */
+export async function submitSitting(_state: SitState, form: FormData): Promise<SitState> {
+  const id = String(form.get("benvolio_id") ?? "");
+  const here = `/b/${id}`;
+  const { userId } = await requireSignedIn(here);
+  const sitting = Number(form.get("sitting"));
+  const benvolio = await loadBenvolioToWrite(id, userId);
+  if (!benvolio) redirect(here);
+
+  const input = sittingInput(sitting, form);
+  // An opening answers the question as its writer saw it. If that changed
+  // (new wording suggested or accepted meanwhile), give it back, not lose it.
+  const { question } = benvolio.conversation;
+  const opening = sittingParts(sitting).stance;
+  if (opening && text(form.get(FIELD.question)) !== text(question.text)) {
+    return {
+      error: `The question is now “${question.text}”. Check your opening still answers it, then send it.`,
+      input,
+      question: question.text,
+    };
+  }
+  if (opening && question.proposed !== undefined) {
+    return {
+      error: `${benvolio.partnerName} has suggested new wording for the question. Keep a copy of what you wrote, then reload the page to decide.`,
+      input,
+    };
+  }
+  const checked = checkSubmission(benvolio.conversation, benvolio.role, sitting, input);
+  if (!checked.ok) {
+    if ("notYourTurn" in checked) redirect(here);
+    return { error: INVALID[checked.invalid], input };
+  }
+  const { error } = await createAdminClient()
+    .from("submissions")
+    .insert({ benvolio_id: id, sitting, role: benvolio.role, body: checked.submission });
+  // A duplicate means another tab sent this sitting first.
+  if (error?.code === "23505") redirect(here);
+  if (error) throw new Error(`Sending a sitting failed: ${error.message}`);
+
+  const { respond, write } = sittingParts(sitting);
+  for (const [step, part] of [["respond", respond], ["write", write]] as const) {
+    if (part) {
+      trackServer(userId, "step_submitted", {
+        benvolio_id: id,
+        round: part.round as RoundNumber,
+        step,
+        sitting,
+      });
+    }
+  }
+  redirect(here);
+}
+
