@@ -3,6 +3,7 @@ import type { Role } from "@/lib/conversation/model";
 import { ROUNDS } from "@/lib/conversation/rounds";
 import { validSitting } from "@/test/sittings";
 import { adminDatabase } from "./database";
+import { STANCE } from "./screen";
 
 /**
  * Stands in for the screens for responding, which aren't built yet: records
@@ -12,12 +13,7 @@ import { adminDatabase } from "./database";
 export async function writeSitting(benvolioId: string, role: Role, sitting: number) {
   const { error } = await adminDatabase()
     .from("submissions")
-    .insert({
-      benvolio_id: benvolioId,
-      sitting,
-      role,
-      body: validSitting(sitting, role),
-    });
+    .insert({ benvolio_id: benvolioId, sitting, role, body: validSitting(sitting, role) });
   if (error) throw new Error(`Writing sitting ${sitting} failed: ${error.message}`);
 }
 
@@ -25,12 +21,12 @@ export async function writeSitting(benvolioId: string, role: Role, sitting: numb
 export async function writeOpening(page: Page, benvolioId: string, who: string) {
   const { stance, write } = validSitting(0, who);
   await page.goto(`/b/${benvolioId}`);
-  await page.getByLabel("Where do you stand?").fill(stance!);
+  await page.getByLabel(STANCE).fill(stance!);
   const { itemLabel } = ROUNDS[0].write;
   for (const [i, item] of write!.entries()) {
     await page.getByLabel(`${itemLabel} ${i + 1}`).fill(item);
   }
   await page.getByRole("button", { name: "Send" }).click();
   // Sent once the page reloads without the form.
-  await expect(page.getByLabel("Where do you stand?")).toHaveCount(0);
+  await expect(page.getByLabel(STANCE)).toHaveCount(0);
 }

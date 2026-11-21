@@ -1,10 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { startConversation } from "@/lib/conversation/model";
 import { formData } from "@/test/form-data";
+import { validSitting } from "@/test/sittings";
 
 const rpc = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc }) }));
+const insert = vi.hoisted(() => vi.fn());
+const from = vi.hoisted(() => vi.fn(() => ({ insert })));
+vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc, from }) }));
 const requireSignedIn = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/auth/session", () => ({ requireSignedIn }));
+const loadBenvolioToWrite = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/db/load-benvolio", () => ({ loadBenvolioToWrite }));
+const trackServer = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/analytics/server", () => ({ trackServer }));
 vi.mock("server-only", () => ({}));
 const redirect = vi.hoisted(() =>
   vi.fn((to: string) => {
@@ -14,7 +22,7 @@ const redirect = vi.hoisted(() =>
 vi.mock("next/navigation", () => ({ redirect }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
-const { decideQuestion, renewInvite } = await import("./actions");
+const { decideQuestion, renewInvite, submitSitting } = await import("./actions");
 const { hashInviteToken } = await import("@/lib/invites/token");
 
 const ID = "00000000-0000-4000-8000-0000000000b1";
@@ -84,5 +92,73 @@ describe("decideQuestion", () => {
       error: expect.any(String),
     });
     expect(rpc).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("submitSitting", () => {
+  const { stance, write } = validSitting(0, "Jane");
+  const opening = (fields: { stance?: string; write?: string[] } = { stance, write }, sitting = "0") =>
+    formData({ benvolio_id: ID, sitting, ...fields });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    requireSignedIn.mockResolvedValue({ userId: "jane", email: "j@example.com" });
+    insert.mockResolvedValue({ error: null });
+    loadBenvolioToWrite.mockResolvedValue({
+      role: "initiator",
+      partnerName: "Rhonda",
+      conversation: startConversation("Should we get a dog?"),
+    });
+  });
+
+  it("saves the opening, tidied, then reloads the page", async () => {
+    await expect(submitSitting({}, opening({ stance: ` ${stance} `, write }))).rejects.toThrow(
+      `redirect /b/${ID}`,
+    );
+    expect(loadBenvolioToWrite).toHaveBeenCalledWith(ID, "jane");
+    expect(from).toHaveBeenCalledWith("submissions");
+    expect(insert).toHaveBeenCalledWith({
+      benvolio_id: ID,
+      sitting: 0,
+      role: "initiator",
+      body: { stance, write },
+    });
+    expect(trackServer).toHaveBeenCalledExactlyOnceWith("jane", "step_submitted", {
+      benvolio_id: ID,
+      round: 1,
+      step: "write",
+      sitting: 0,
+    });
+  });
+
+  it("says what's missing and gives back what was typed", async () => {
+    const blank = { stance: "   ", write: ["a", "b", "c"] };
+    expect(await submitSitting({}, opening(blank))).toEqual({
+      error: "Please write where you stand.",
+      input: blank,
+    });
+    const short = { stance: "Yes", write: ["a", " ", "c"] };
+    expect(await submitSitting({}, opening(short))).toEqual({
+      error: expect.stringContaining("all 3"),
+      input: short,
+    });
+    // Parts the sitting doesn't have are never read.
+    expect(await submitSitting({}, opening({ write }))).toMatchObject({ input: { stance: "", write } });
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("reloads instead when it isn't this person's turn for that sitting", async () => {
+    await expect(submitSitting({}, opening(undefined, "1"))).rejects.toThrow("redirect");
+    loadBenvolioToWrite.mockResolvedValue(null);
+    await expect(submitSitting({}, opening())).rejects.toThrow("redirect");
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("treats a sitting another tab already sent as sent", async () => {
+    insert.mockResolvedValue({ error: { code: "23505", message: "duplicate key" } });
+    await expect(submitSitting({}, opening())).rejects.toThrow("redirect");
+    expect(trackServer).not.toHaveBeenCalled();
+    insert.mockResolvedValue({ error: { code: "XX000", message: "boom" } });
+    await expect(submitSitting({}, opening())).rejects.toThrow("boom");
   });
 });

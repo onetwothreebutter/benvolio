@@ -5,9 +5,15 @@ import { redirect } from "next/navigation";
 import { trackServer } from "@/lib/analytics/server";
 import type { RoundNumber } from "@/lib/analytics/events";
 import { requireSignedIn } from "@/lib/auth/session";
-import { LAST_SITTING, MAX_ITEM_LENGTH, nextAction, parseSubmission } from "@/lib/conversation/model";
-import { sittingInput, type SittingInput } from "@/lib/conversation/sitting-input";
+import {
+  checkSubmission,
+  MAX_ITEM_LENGTH,
+  sittingParts,
+  type ParseResult,
+} from "@/lib/conversation/model";
+import { ITEMS_PER_ROUND } from "@/lib/conversation/rounds";
 import { loadBenvolioToWrite } from "@/lib/db/load-benvolio";
+import { sittingInput, type SittingInput } from "./sitting-input";
 import { isBenvolioId } from "@/lib/db/benvolio-id";
 import { newInviteToken } from "@/lib/invites/token";
 import { siteUrl } from "@/lib/site-url";
@@ -61,9 +67,13 @@ export async function decideQuestion(_state: DecideState, form: FormData): Promi
   redirect(here);
 }
 
-const INVALID: Record<string, string> = {
+const CHECK_IT = "Please check what you wrote.";
+const INVALID: Record<Extract<ParseResult, { ok: false }>["invalid"], string> = {
   stance: "Please write where you stand.",
-  write: `Please write all three, each up to ${MAX_ITEM_LENGTH.toLocaleString("en")} characters.`,
+  write: `Please write all ${ITEMS_PER_ROUND}, each up to ${MAX_ITEM_LENGTH.toLocaleString("en")} characters.`,
+  respond: CHECK_IT,
+  sitting: CHECK_IT,
+  shape: CHECK_IT,
 };
 
 export type SitState = { error?: string; input?: SittingInput };
@@ -80,32 +90,27 @@ export async function submitSitting(_state: SitState, form: FormData): Promise<S
   const sitting = Number(form.get("sitting"));
   const benvolio = await loadBenvolioToWrite(id, userId);
   if (!benvolio) redirect(here);
-  const action = nextAction(benvolio.conversation, benvolio.role);
-  if (action.kind !== "sit" || action.sitting !== sitting) redirect(here);
 
   const input = sittingInput(sitting, form);
-  const parsed = parseSubmission(sitting, input);
-  if (!parsed.ok) return { error: INVALID[parsed.invalid] ?? "Please check what you wrote.", input };
+  const checked = checkSubmission(benvolio.conversation, benvolio.role, sitting, input);
+  if (!checked.ok) {
+    if ("notYourTurn" in checked) redirect(here);
+    return { error: INVALID[checked.invalid], input };
+  }
   const { error } = await createAdminClient()
     .from("submissions")
-    .insert({ benvolio_id: id, sitting, role: benvolio.role, body: parsed.submission });
+    .insert({ benvolio_id: id, sitting, role: benvolio.role, body: checked.submission });
   // A duplicate means another tab sent this sitting first.
-  if (error && error.code !== "23505") throw new Error(`Sending a sitting failed: ${error.message}`);
-  if (!error) {
-    // A sitting responds to the round revealed before it and writes the next.
-    if (sitting > 0) {
+  if (error?.code === "23505") redirect(here);
+  if (error) throw new Error(`Sending a sitting failed: ${error.message}`);
+
+  const { respond, write } = sittingParts(sitting);
+  for (const [step, part] of [["respond", respond], ["write", write]] as const) {
+    if (part) {
       trackServer(userId, "step_submitted", {
         benvolio_id: id,
-        round: sitting as RoundNumber,
-        step: "respond",
-        sitting,
-      });
-    }
-    if (sitting < LAST_SITTING) {
-      trackServer(userId, "step_submitted", {
-        benvolio_id: id,
-        round: (sitting + 1) as RoundNumber,
-        step: "write",
+        round: part.round as RoundNumber,
+        step,
         sitting,
       });
     }

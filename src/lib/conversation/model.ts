@@ -1,5 +1,5 @@
 import { cleanText } from "@/lib/text";
-import { ITEMS_PER_ROUND, ROUNDS, type ResponseKind } from "./rounds";
+import { ITEMS_PER_ROUND, ROUNDS, type ResponseKind, type Round } from "./rounds";
 
 /**
  * The turn-taking rules of a Benvolio, as pure functions over plain data.
@@ -266,6 +266,23 @@ function parseResponse(value: unknown, kind: ResponseKind): Response | null {
   }
 }
 
+/**
+ * What a sitting asks for: a stance in the opening, the items for the round
+ * it opens (all but the last sitting), and the response to the round revealed
+ * before it (all but the opening). Rounds are numbered from 1.
+ */
+export function sittingParts(sitting: number): {
+  stance: boolean;
+  write?: Round["write"] & { round: number };
+  respond?: Round["respond"] & { round: number };
+} {
+  return {
+    stance: sitting === 0,
+    write: sitting < LAST_SITTING ? { ...ROUNDS[sitting].write, round: sitting + 1 } : undefined,
+    respond: sitting > 0 ? { ...ROUNDS[sitting - 1].respond, round: sitting } : undefined,
+  };
+}
+
 export type ParseResult =
   | { ok: true; submission: Submission }
   | { ok: false; invalid: keyof Submission | "sitting" | "shape" };
@@ -281,9 +298,10 @@ export function parseSubmission(sitting: number, input: unknown): ParseResult {
   if (!isRecord(input) || !hasOnlyKeys(input, ["stance", "write", "respond"])) {
     return { ok: false, invalid: "shape" };
   }
+  const parts = sittingParts(sitting);
   const submission: Submission = {};
 
-  if (sitting === 0) {
+  if (parts.stance) {
     const stance = cleanText(input.stance, MAX_ITEM_LENGTH);
     if (stance === null) return { ok: false, invalid: "stance" };
     submission.stance = stance;
@@ -291,7 +309,7 @@ export function parseSubmission(sitting: number, input: unknown): ParseResult {
     return { ok: false, invalid: "stance" };
   }
 
-  if (sitting < LAST_SITTING) {
+  if (parts.write) {
     const write = parseItems(input.write);
     if (write === null) return { ok: false, invalid: "write" };
     submission.write = write;
@@ -299,8 +317,8 @@ export function parseSubmission(sitting: number, input: unknown): ParseResult {
     return { ok: false, invalid: "write" };
   }
 
-  if (sitting > 0) {
-    const respond = parseResponse(input.respond, ROUNDS[sitting - 1].respond.kind);
+  if (parts.respond) {
+    const respond = parseResponse(input.respond, parts.respond.kind);
     if (respond === null) return { ok: false, invalid: "respond" };
     submission.respond = respond;
   } else if (input.respond !== undefined) {
@@ -310,15 +328,32 @@ export function parseSubmission(sitting: number, input: unknown): ParseResult {
   return { ok: true, submission };
 }
 
+export type CheckResult = ParseResult | { ok: false; notYourTurn: true };
+
+/**
+ * Checks a person's submission for a sitting without recording it: whether
+ * it's their turn for that sitting, then the input itself.
+ */
+export function checkSubmission(
+  c: Conversation,
+  role: Role,
+  sitting: number,
+  input: unknown,
+): CheckResult {
+  const action = nextAction(c, role);
+  if (action.kind !== "sit" || action.sitting !== sitting) return { ok: false, notYourTurn: true };
+  return parseSubmission(sitting, input);
+}
+
 /** Records a person's submission for their current sitting. */
 export function submit(c: Conversation, role: Role, sitting: number, input: unknown): Conversation {
-  const action = nextAction(c, role);
-  if (action.kind !== "sit" || action.sitting !== sitting) {
-    throw new TurnError(`Not ${role}'s turn for sitting ${sitting}`);
+  const checked = checkSubmission(c, role, sitting, input);
+  if (!checked.ok) {
+    throw new TurnError(
+      "notYourTurn" in checked ? `Not ${role}'s turn for sitting ${sitting}` : `Invalid ${checked.invalid}`,
+    );
   }
-  const parsed = parseSubmission(sitting, input);
-  if (!parsed.ok) throw new TurnError(`Invalid ${parsed.invalid}`);
   const submissions = [...c.submissions];
-  submissions[sitting] = { ...submissions[sitting], [role]: parsed.submission };
+  submissions[sitting] = { ...submissions[sitting], [role]: checked.submission };
   return { ...c, submissions };
 }
