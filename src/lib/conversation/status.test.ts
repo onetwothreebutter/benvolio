@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { statusLine } from "./status";
+import { sittingName, statusLine } from "./status";
 
 describe("statusLine", () => {
   it("tells each person what happens next", () => {
@@ -15,5 +15,13 @@ describe("statusLine", () => {
     expect(statusLine({ kind: "finished" }, "Jane")).toBe("You've finished this Benvolio.");
     // A recipient who hasn't joined never sees the Benvolio's page.
     expect(() => statusLine({ kind: "join" }, "Jane")).toThrow();
+  });
+});
+
+describe("sittingName", () => {
+  it("names the opening by whose it is, and numbers the rest", () => {
+    expect(sittingName(0)).toBe("your opening");
+    expect(sittingName(0, "their")).toBe("their opening");
+    expect(sittingName(2, "their")).toBe("sitting 3 of 6");
   });
 });

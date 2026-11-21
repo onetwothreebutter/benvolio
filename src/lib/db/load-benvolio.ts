@@ -27,7 +27,16 @@ export function loadBenvolioToWrite(id: string, userId: string) {
   return readBenvolio(createAdminClient(), id, userId);
 }
 
-async function readBenvolio(supabase: SupabaseClient, id: string, userId: string) {
+/**
+ * The whole Benvolio and both people in it, for the server to work out whom
+ * to email. Never show it: use loadBenvolio for that.
+ */
+export async function loadBenvolioForEmail(id: string) {
+  const rows = await readRows(createAdminClient(), id);
+  return rows && { people: rows.people, conversation: toConversation(rows.benvolio, rows.people, rows.submissions) };
+}
+
+async function readRows(supabase: SupabaseClient, id: string) {
   if (!isBenvolioId(id)) return null;
   // Three queries: submissions reference participants, not benvolios, so
   // PostgREST can't embed them in one select.
@@ -40,18 +49,22 @@ async function readBenvolio(supabase: SupabaseClient, id: string, userId: string
     if (error) throw new Error(`Loading a Benvolio failed: ${error.message}`);
   }
   if (!benvolio.data) return null;
+  return {
+    benvolio: benvolio.data as BenvolioRow,
+    people: participants.data as ParticipantRow[],
+    submissions: submissions.data as SubmissionRow[],
+  };
+}
 
-  const people = participants.data as ParticipantRow[];
-  const me = people.find((p) => p.person_id === userId);
-  const partner = me && people.find((p) => p.role === partnerOf(me.role));
+async function readBenvolio(supabase: SupabaseClient, id: string, userId: string) {
+  const rows = await readRows(supabase, id);
+  if (!rows) return null;
+  const me = rows.people.find((p) => p.person_id === userId);
+  const partner = me && rows.people.find((p) => p.role === partnerOf(me.role));
   if (!me || !partner) return null;
   return {
     role: me.role,
     partnerName: partner.first_name,
-    conversation: toConversation(
-      benvolio.data as BenvolioRow,
-      people,
-      submissions.data as SubmissionRow[],
-    ),
+    conversation: toConversation(rows.benvolio, rows.people, rows.submissions),
   };
 }
