@@ -1,22 +1,9 @@
 import { expect, type Page } from "@playwright/test";
 import { FEELINGS } from "@/lib/conversation/feelings";
-import { sittingParts, type Role } from "@/lib/conversation/model";
+import { sittingParts } from "@/lib/conversation/model";
 import { statusLine } from "@/lib/conversation/status";
 import { validSitting } from "@/test/sittings";
-import { adminDatabase } from "./database";
 import { STANCE } from "./screen";
-
-/**
- * Stands in for the screens for responding, which aren't built yet: records
- * what a person writes in a sitting straight into the database, using the
- * unit tests' valid submissions. When the screens exist, type into them instead.
- */
-export async function writeSitting(benvolioId: string, role: Role, sitting: number) {
-  const { error } = await adminDatabase()
-    .from("submissions")
-    .insert({ benvolio_id: benvolioId, sitting, role, body: validSitting(sitting, role) });
-  if (error) throw new Error(`Writing sitting ${sitting} failed: ${error.message}`);
-}
 
 /**
  * Types a sitting on the Benvolio's page, as `who`, using the unit tests'
@@ -33,7 +20,7 @@ export async function typeSitting(page: Page, benvolioId: string, who: string, s
   for (const item of (partner && partner.write) || []) await expect(page.getByText(item)).toBeVisible();
   if (stance) await page.getByLabel(STANCE).fill(stance);
   if (respond) {
-    const item = (i: number) => `${parts.respond!.itemLabel.toLowerCase()} ${i + 1}`;
+    const item = (i: number) => `${parts.respond!.itemName} ${i + 1}`;
     for (const [i, text] of ("texts" in respond ? respond.texts : []).entries()) {
       const field = respond.kind === "rephrase" ? `${item(i)} in your words` : `Your answer to .*${item(i)}`;
       await page.getByLabel(new RegExp(field, "i")).fill(text);
@@ -43,6 +30,15 @@ export async function typeSitting(page: Page, benvolioId: string, who: string, s
       for (const tag of tags) {
         await feelings.getByLabel(FEELINGS.find((f) => f.slug === tag)!.label).check();
       }
+    }
+    for (const [i, agree] of ("agree" in respond ? respond.agree : []).entries()) {
+      await page
+        .getByRole("group", { name: new RegExp(`agree with .*${item(i)}`, "i") })
+        .getByLabel(agree ? "Agree" : "Disagree", { exact: true })
+        .check();
+    }
+    for (const [i, rank] of ("ranks" in respond ? respond.ranks : []).entries()) {
+      await page.getByLabel(new RegExp(`rank for .*${item(i)}`, "i")).selectOption(String(rank));
     }
   }
   for (const [i, item] of (write ?? []).entries()) {

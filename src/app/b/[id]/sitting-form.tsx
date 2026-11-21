@@ -30,7 +30,7 @@ export function SittingForm({
   partnerName: string;
   /** The question as this page shows it. */
   question: string;
-  /** Required in every sitting but the opening. */
+  /** What this sitting responds to: required in every sitting but the opening. */
   revealed?: Revealed;
 }) {
   const [state, action, pending] = useActionState<SitState, FormData>(submitSitting, {});
@@ -57,7 +57,7 @@ export function SittingForm({
             <Respond
               key={i}
               kind={respond.kind}
-              label={`${partnerName}'s ${respond.itemLabel.toLowerCase()} ${i + 1}`}
+              label={`${partnerName}'s ${respond.itemName} ${i + 1}`}
               item={item}
               index={i}
               typed={typed?.respond}
@@ -156,9 +156,45 @@ function Respond({
         checked={typedValue("tags") as string[] | undefined}
       />
     ),
-    // Agreeing and ranking come in the next change; the page doesn't offer them yet.
-    agree: () => null,
-    ranks: () => null,
+    agree: () => (
+      <fieldset className={styles.choices}>
+        <legend className={styles.hint}>Do you agree with {label}?</legend>
+        {[
+          ["agree", "Agree"],
+          ["disagree", "Disagree"],
+        ].map(([value, text]) => (
+          <label key={value}>
+            <input
+              type="radio"
+              name={FIELD.respond("agree", index)}
+              value={value}
+              required
+              defaultChecked={typedValue("agree") === (value === "agree")}
+            />{" "}
+            {text}
+          </label>
+        ))}
+      </fieldset>
+    ),
+    ranks: () => (
+      <select
+        name={FIELD.respond("ranks", index)}
+        required
+        aria-label={`Your rank for ${label}`}
+        defaultValue={String(typedValue("ranks") ?? "")}
+        className={styles.input}
+      >
+        <option value="" disabled>
+          Rank it
+        </option>
+        {Array.from({ length: ITEMS_PER_ROUND }, (_, r) => (
+          <option key={r} value={r + 1}>
+            {r + 1}
+            {r === 0 ? " (most liked)" : ""}
+          </option>
+        ))}
+      </select>
+    ),
   };
   return (
     <div className={styles.form}>

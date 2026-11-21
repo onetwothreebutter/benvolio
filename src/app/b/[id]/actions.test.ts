@@ -231,6 +231,55 @@ describe("submitSitting, responding to a round", () => {
     ]);
   });
 
+  it("saves agree and disagree marks with feelings, and explains a missing mark", async () => {
+    loadBenvolioToWrite.mockResolvedValue({ role: "initiator", partnerName: "Rhonda", conversation: revealed(4) });
+    const fields = {
+      "agree.0": "agree",
+      "agree.1": "disagree",
+      "agree.2": "agree",
+      "tags.1": "hurt",
+      write: ["C 1", "C 2", "C 3"],
+    };
+    await expect(submitSitting({}, sittingForm(4, fields))).rejects.toThrow("redirect");
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: {
+          respond: { kind: "agree", agree: [true, false, true], tags: [[], ["hurt"], []] },
+          write: ["C 1", "C 2", "C 3"],
+        },
+      }),
+    );
+    insert.mockClear();
+    for (const mark of [undefined, "constructor", "maybe"]) {
+      const tampered: Record<string, string | string[]> = { ...fields };
+      if (mark === undefined) delete tampered["agree.1"];
+      else tampered["agree.1"] = mark;
+      expect(await submitSitting({}, sittingForm(4, tampered))).toMatchObject({
+        error: "Please say whether you agree with each one.",
+      });
+    }
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("saves a ranking only when each rank is used once", async () => {
+    loadBenvolioToWrite.mockResolvedValue({ role: "initiator", partnerName: "Rhonda", conversation: revealed(5) });
+    const ranks = (a: string, b: string, c: string) => ({ "ranks.0": a, "ranks.1": b, "ranks.2": c });
+    expect(await submitSitting({}, sittingForm(5, ranks("1", "1", "3")))).toMatchObject({
+      error: "Please rank them 1 to 3, using each number once.",
+      input: { respond: { kind: "rank", ranks: [1, 1, 3] } },
+    });
+    await expect(submitSitting({}, sittingForm(5, ranks("2", "1", "3")))).rejects.toThrow("redirect");
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({ sitting: 5, body: { respond: { kind: "rank", ranks: [2, 1, 3] } } }),
+    );
+    expect(trackServer).toHaveBeenCalledExactlyOnceWith("jane", "step_submitted", {
+      benvolio_id: ID,
+      round: 5,
+      step: "respond",
+      sitting: 5,
+    });
+  });
+
   it("saves answers with the feelings ticked for each, and explains a missing answer", async () => {
     loadBenvolioToWrite.mockResolvedValue({ role: "initiator", partnerName: "Rhonda", conversation: revealed(2) });
     const fields = {

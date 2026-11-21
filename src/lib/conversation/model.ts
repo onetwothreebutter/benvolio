@@ -275,15 +275,12 @@ function parseResponse(value: unknown, kind: ResponseKind): Response | null {
 export function sittingParts(sitting: number): {
   stance: boolean;
   write?: Round["write"] & { round: number };
-  respond?: Round["respond"] & { round: number; itemLabel: string };
+  respond?: Round["respond"] & { round: number };
 } {
   return {
     stance: sitting === 0,
     write: sitting < LAST_SITTING ? { ...ROUNDS[sitting].write, round: sitting + 1 } : undefined,
-    respond:
-      sitting > 0
-        ? { ...ROUNDS[sitting - 1].respond, round: sitting, itemLabel: ROUNDS[sitting - 1].write.itemLabel }
-        : undefined,
+    respond: sitting > 0 ? { ...ROUNDS[sitting - 1].respond, round: sitting } : undefined,
   };
 }
 

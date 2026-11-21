@@ -71,7 +71,8 @@
   font-size: 1.1rem;
 }
 
-.feelings {
+.feelings,
+.choices {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem 0.9rem;
@@ -80,7 +81,8 @@
   margin: 0;
 }
 
-.feelings legend {
+.feelings legend,
+.choices legend {
   margin-bottom: 0.4rem;
 }
 
