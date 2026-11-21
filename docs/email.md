@@ -12,6 +12,7 @@ sent by the app through [Resend](https://resend.com)'s API, from
 | Your turn, ready to begin | The partner | The recipient joins, or the question is settled, and nobody has written yet |
 | New wording suggested | The initiator | The recipient joins and suggests new wording for the question |
 | Finished | The partner | Someone sends the last sitting |
+| Reminder (up to 3 per sitting) | Whoever's turn it is | 2 quiet days, then 2 more, then 3 more (weekly pace: 7, 3, 4) |
 
 After each change (sending a sitting, joining, deciding on the question),
 `notifyLater` in `src/lib/email/notify.ts` reloads the Benvolio and emails
@@ -25,9 +26,9 @@ waits on email, and a failure goes to Sentry instead of the person.
 - **At most once.** Each email claims its row in `public.notifications` before
   it is sent; the table's unique key means a repeat sends nothing. If Resend
   refuses it (or doesn't answer within 10 seconds), the row is deleted so a
-  later attempt can send it. For now nothing retries it, so a failed send is
-  lost (the daily check-in will retry). Resend's idempotency key covers a
-  retry within 24 hours of a timeout.
+  later attempt can send it. A turn email that fails isn't sent again: the
+  first reminder covers it. Resend's idempotency key covers a retry within
+  24 hours of a timeout.
 - **One "your turn" per sitting.** Whichever reason comes first is the one
   sent: after "ready to begin", the partner's opening sends nothing more.
 - **Off without `RESEND_API_KEY`**, as in local development and the E2E suite.
@@ -37,3 +38,25 @@ waits on email, and a failure goes to Sentry instead of the person.
 The templates in `src/lib/email/templates.ts` are plain functions, so a
 preview is one call: for example, `yourTurnEmail({ partner: "Jane", sitting: 2,
 link, why: "readable" }).html`.
+
+## Reminders
+
+Vercel Cron calls `/api/cron/reminders` once a day at 17:00 UTC (9 or 10 AM
+Pacific; on the Hobby plan it can run at any minute in that hour, so each gap
+allows an hour's slack). `sendReminders` in `src/lib/email/reminders.ts`:
+
+1. Finds Benvolios whose `active_at` is between 2 and 21 days old. Every
+   sitting sent, joining and deciding on the question moves `active_at`.
+2. For each person with something to do (their sitting, or the question's
+   wording), sends the next reminder about it once its gap has passed: the
+   first counts from the last move, each later one from the reminder before
+   it or a later move, whichever is later. The third says it's the last.
+3. Sends one at a time (Resend allows a few requests a second) and stops
+   starting new sends after 40 seconds; the next day's run picks up the rest.
+
+An initiator whose partner hasn't joined yet is reminded to write their
+opening too. Those reminders count toward the three for the opening.
+
+The route needs `Authorization: Bearer $CRON_SECRET`, which Vercel sends when
+`CRON_SECRET` is set. Each run reports to Sentry's cron monitor `reminders`,
+which alerts if a run fails or doesn't happen.
