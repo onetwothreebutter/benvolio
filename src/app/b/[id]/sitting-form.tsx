@@ -143,6 +143,7 @@ function Respond({
         maxLength={MAX_ITEM_LENGTH}
         required
         aria-label={kind === "rephrase" ? `${label} in your words` : `Your answer to ${label}`}
+        placeholder={kind === "rephrase" ? "In your words" : "Your answer"}
         aria-describedby={id}
         defaultValue={typedValue("texts") as string | undefined}
         className={styles.input}

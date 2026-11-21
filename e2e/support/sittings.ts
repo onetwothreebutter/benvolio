@@ -28,6 +28,9 @@ export async function typeSitting(page: Page, benvolioId: string, who: string, s
   const yourTurn = page.getByText(statusLine({ kind: "sit", sitting }, ""), { exact: true });
   await page.goto(`/b/${benvolioId}`);
   await expect(yourTurn).toBeVisible();
+  // What the partner wrote for the round this sitting responds to is on screen.
+  const partner = sitting > 0 && validSitting(sitting - 1, who === "initiator" ? "recipient" : "initiator");
+  for (const item of (partner && partner.write) || []) await expect(page.getByText(item)).toBeVisible();
   if (stance) await page.getByLabel(STANCE).fill(stance);
   if (respond) {
     const item = (i: number) => `${parts.respond!.itemLabel.toLowerCase()} ${i + 1}`;

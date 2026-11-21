@@ -1,6 +1,7 @@
 /**
  * The feelings someone can tag a partner's item with, in the order offered.
- * Slugs are stored and sent to analytics as counts only; labels are shown.
+ * Slugs are stored; labels are shown. Like anything written, they are never
+ * sent to analytics.
  */
 export const FEELINGS = [
   { slug: "hopeful", label: "Hopeful" },

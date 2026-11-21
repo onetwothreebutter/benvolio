@@ -258,7 +258,10 @@ describe("submitSitting, responding to a round", () => {
       input: { respond: { kind: "answer", texts: ["A 1", "", "A 3"] } },
     });
     const tooMany = { ...fields, "tags.1": ["sad", "hurt", "hopeful", "curious"] };
-    expect(await submitSitting({}, sittingForm(2, tooMany))).toMatchObject({ error: expect.any(String) });
+    expect(await submitSitting({}, sittingForm(2, tooMany))).toMatchObject({
+      error: "Please answer all 3. You can pick up to 3 feelings for each.",
+      input: { respond: { tags: [["hopeful"], ["sad", "hurt", "hopeful", "curious"], ["sad", "relieved"]] } },
+    });
     expect(insert).not.toHaveBeenCalled();
   });
 });

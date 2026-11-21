@@ -31,7 +31,10 @@ export type SittingInput = {
 const READ: Record<ResponseField, (form: FormData, name: string) => unknown> = {
   texts: (form, name) => text(form.get(name)),
   tags: (form, name) => form.getAll(name).map(String),
-  agree: (form, name) => ({ agree: true, disagree: false })[String(form.get(name))],
+  agree: (form, name) => {
+    const mark = form.get(name);
+    return mark === "agree" ? true : mark === "disagree" ? false : undefined;
+  },
   ranks: (form, name) => Number(form.get(name)),
 };
 
