@@ -64,9 +64,15 @@
   margin: 0;
 }
 
-.quote {
+/* A quote is something you wrote; a reply is your partner's words about it. */
+.quote,
+.reply {
   margin: 0;
   padding-left: 0.75rem;
+  white-space: pre-line;
+}
+
+.quote {
   border-left: 3px solid var(--accent);
   font-size: 1.1rem;
 }
@@ -88,4 +94,12 @@
 
 .feeling {
   white-space: nowrap;
+}
+
+.list {
+  display: grid;
+  gap: 1.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }

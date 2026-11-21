@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
 import { LAST_SITTING, partnerOf, type NextAction, type Role } from "@/lib/conversation/model";
+import { ROUNDS } from "@/lib/conversation/rounds";
 import { statusLine } from "@/lib/conversation/status";
+import { validSitting } from "@/test/sittings";
 import { joinFromInvite, newPerson, signIn, startBenvolio } from "./support/people";
 import { formError, STANCE } from "./support/screen";
 import { typeSitting } from "./support/sittings";
@@ -40,6 +42,17 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
     );
   }
   const both = (action: NextAction) => ({ initiator: action, recipient: action });
+  /** Checks each person's page shows how their partner responded to their items for a round. */
+  async function expectResponses(round: number) {
+    for (const role of ["initiator", "recipient"] as const) {
+      const phone = phones[role];
+      await expect(phone.getByRole("heading", { name: ROUNDS[round - 1].respond.seen(partnerName[role]) })).toBeVisible();
+      const response = validSitting(round, partnerOf(role)).respond!;
+      for (const text of "texts" in response ? response.texts : []) {
+        await expect(phone.getByText(text, { exact: true })).toBeVisible();
+      }
+    }
+  }
 
   // The question is settled before anyone writes.
   await expectNext({
@@ -72,6 +85,7 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
       await expectNext(
         both(sitting === LAST_SITTING ? { kind: "finished" } : { kind: "sit", sitting: sitting + 1 }),
       );
+      if (sitting > 0) await expectResponses(sitting);
     });
   }
 });

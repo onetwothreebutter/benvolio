@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import {
   hasSubmitted,
+  latestExchange,
   nextAction,
   visibleSubmissions,
   type Conversation,
@@ -13,6 +14,7 @@ import { getProfile, requireSignedIn } from "@/lib/auth/session";
 import { loadBenvolio } from "@/lib/db/load-benvolio";
 import styles from "../../form.module.css";
 import { DecideQuestion } from "./decide-question";
+import { PartnerResponses } from "./partner-responses";
 import { RenewInvite } from "./renew-invite";
 import { SittingForm, type Revealed } from "./sitting-form";
 
@@ -28,6 +30,7 @@ export default async function BenvolioPage({ params }: { params: Promise<{ id: s
   if (!benvolio) notFound();
   const { conversation, role, partnerName } = benvolio;
   const action = nextAction(conversation, role);
+  const responses = latestExchange(conversation, role);
   return (
     <main className={styles.main}>
       <p className={styles.hint}>With {partnerName}</p>
@@ -39,6 +42,7 @@ export default async function BenvolioPage({ params }: { params: Promise<{ id: s
         </>
       )}
       <p>{statusLine(action, partnerName)}</p>
+      {responses && <PartnerResponses exchange={responses} partnerName={partnerName} />}
       {action.kind === "decide_question" && (
         <DecideQuestion
           benvolioId={id}

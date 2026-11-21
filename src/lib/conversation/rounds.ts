@@ -25,6 +25,8 @@ export type Round = {
     itemName: string;
     prompt: string;
     help?: string;
+    /** Heads the partner's responses to your items, once they're revealed. */
+    seen: (partner: string) => string;
   };
 };
 
@@ -41,6 +43,7 @@ export const ROUNDS: readonly Round[] = [
       itemName: "reason",
       prompt: "Rephrase each of your partner's reasons in your own words.",
       help: "To show that you're listening to each other, you'll each rephrase the other's reasons.",
+      seen: (partner) => `Your reasons, in ${partner}'s words`,
     },
   },
   {
@@ -55,6 +58,7 @@ export const ROUNDS: readonly Round[] = [
       itemName: "question",
       prompt: "Answer your partner's questions honestly.",
       help: "How can you answer in a way that helps them understand your point of view? You can tag each question with how it made you feel.",
+      seen: (partner) => `${partner}'s answers to your questions`,
     },
   },
   {
@@ -69,6 +73,7 @@ export const ROUNDS: readonly Round[] = [
       itemName: "thing to know",
       prompt: "Read what your partner wanted you to know.",
       help: "Take your time. You can tag each one with how it made you feel.",
+      seen: (partner) => `How what you shared made ${partner} feel`,
     },
   },
   {
@@ -82,6 +87,7 @@ export const ROUNDS: readonly Round[] = [
       kind: "agree",
       itemName: "point of agreement",
       prompt: "Do you agree with each of these?",
+      seen: (partner) => `Does ${partner} agree?`,
     },
   },
   {
@@ -95,6 +101,7 @@ export const ROUNDS: readonly Round[] = [
       kind: "rank",
       itemName: "compromise",
       prompt: "Rank your partner's compromises, 1 being the one you like most.",
+      seen: (partner) => `How ${partner} ranked your compromises`,
     },
   },
 ];

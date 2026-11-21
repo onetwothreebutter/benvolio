@@ -3,10 +3,12 @@ import {
   checkSubmission,
   currentSitting,
   decideQuestion,
+  exchange,
   inviteView,
   isFinished,
   isRevealed,
   join,
+  latestExchange,
   nextAction,
   startConversation,
   submit,
@@ -178,6 +180,41 @@ describe("taking turns", () => {
     const before = structuredClone(c);
     sit(c, "initiator", 0);
     expect(c).toEqual(before);
+  });
+});
+
+describe("responses to your writing", () => {
+  it("pairs your items with your partner's response once it is revealed", () => {
+    let c = bothThrough(join(started()), 0);
+    expect(latestExchange(c, "initiator")).toBeUndefined();
+    expect(exchange(c, 1, "initiator")).toBeUndefined();
+
+    // Rhonda has responded to Jane's reasons, but Jane hasn't written hers.
+    c = sit(c, "recipient", 1);
+    expect(exchange(c, 1, "initiator")).toBeUndefined();
+
+    c = sit(c, "initiator", 1);
+    expect(latestExchange(c, "initiator")).toEqual({ round: 1, ...exchange(c, 1, "initiator") });
+    expect(exchange(c, 1, "initiator")).toEqual({
+      items: validSitting(0, "initiator").write,
+      response: validSitting(1, "recipient").respond,
+    });
+    expect(exchange(c, 1, "recipient")).toEqual({
+      items: validSitting(0, "recipient").write,
+      response: validSitting(1, "initiator").respond,
+    });
+  });
+
+  it("reaches the ranking of your compromises at the finish", () => {
+    const c = bothThrough(join(started()), 5);
+    expect(latestExchange(c, "recipient")).toMatchObject({
+      round: 5,
+      response: validSitting(5, "initiator").respond,
+    });
+  });
+
+  it("has nothing for the opening, which responds to nothing", () => {
+    expect(exchange(bothThrough(join(started()), 0), 0, "initiator")).toBeUndefined();
   });
 });
 

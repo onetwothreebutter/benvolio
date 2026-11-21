@@ -25,3 +25,12 @@ const SLUGS: ReadonlySet<string> = new Set(FEELINGS.map((f) => f.slug));
 export function isFeeling(value: unknown): boolean {
   return typeof value === "string" && SLUGS.has(value);
 }
+
+const LABELS: ReadonlyMap<string, string> = new Map(FEELINGS.map((f) => [f.slug, f.label]));
+
+/** The label shown for a stored feeling. */
+export function feelingLabel(slug: string): string {
+  const label = LABELS.get(slug);
+  if (label === undefined) throw new Error(`Unknown feeling: ${slug}`);
+  return label;
+}
