@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { nextAction } from "@/lib/conversation/model";
+import { hasSubmitted, nextAction } from "@/lib/conversation/model";
 import { statusLine } from "@/lib/conversation/status";
 import { withNext } from "@/lib/auth/safe-next";
 import { getProfile, requireSignedIn } from "@/lib/auth/session";
@@ -36,7 +36,7 @@ export default async function BenvolioPage({ params }: { params: Promise<{ id: s
         <DecideQuestion
           benvolioId={id}
           proposed={action.proposed}
-          openingWritten={conversation.submissions[0]?.initiator !== undefined}
+          openingWritten={hasSubmitted(conversation, 0, "initiator")}
         />
       )}
     </main>

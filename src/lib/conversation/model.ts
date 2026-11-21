@@ -85,7 +85,7 @@ export function startConversation(question: string): Conversation {
   return { question: { text: cleanQuestion(question) }, recipientJoined: false, submissions: [] };
 }
 
-function hasSubmitted(c: Conversation, sitting: number, role: Role): boolean {
+export function hasSubmitted(c: Conversation, sitting: number, role: Role): boolean {
   return c.submissions[sitting]?.[role] !== undefined;
 }
 
