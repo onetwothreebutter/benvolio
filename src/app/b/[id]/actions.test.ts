@@ -197,7 +197,7 @@ describe("submitSitting", () => {
 });
 
 describe("submitSitting, responding to a round", () => {
-  /** Both openings written, and Jane's sitting 1 too when `through` is 2. */
+  /** Both people's sittings before `through`, so `through` is next for each. */
   function revealed(through: number): Conversation {
     let c = join(startConversation("Should we get a dog?"));
     for (let sitting = 0; sitting < through; sitting++) {
@@ -218,8 +218,10 @@ describe("submitSitting, responding to a round", () => {
 
   it("saves a rephrasing with the next round's items, and tracks both steps", async () => {
     loadBenvolioToWrite.mockResolvedValue({ role: "initiator", partnerName: "Rhonda", conversation: revealed(1) });
-    const { write, respond } = validSitting(1, "Jane") as { write: string[]; respond: { texts: string[] } };
-    await expect(submitSitting({}, sittingForm(1, { respond: respond.texts, write }))).rejects.toThrow(
+    const write = ["Q 1", "Q 2", "Q 3"];
+    const texts = { "texts.0": "R 1", "texts.1": "R 2", "texts.2": "R 3" };
+    const respond = { kind: "rephrase", texts: ["R 1", "R 2", "R 3"] };
+    await expect(submitSitting({}, sittingForm(1, { ...texts, write }))).rejects.toThrow(
       "redirect",
     );
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ sitting: 1, body: { respond, write } }));
@@ -232,9 +234,11 @@ describe("submitSitting, responding to a round", () => {
   it("saves answers with the feelings ticked for each, and explains a missing answer", async () => {
     loadBenvolioToWrite.mockResolvedValue({ role: "initiator", partnerName: "Rhonda", conversation: revealed(2) });
     const fields = {
-      respond: ["A 1", "A 2", "A 3"],
-      "feelings.0": "hopeful",
-      "feelings.2": ["sad", "relieved"],
+      "texts.0": "A 1",
+      "texts.1": "A 2",
+      "texts.2": "A 3",
+      "tags.0": "hopeful",
+      "tags.2": ["sad", "relieved"],
       write: ["S 1", "S 2", "S 3"],
     };
     await expect(submitSitting({}, sittingForm(2, fields))).rejects.toThrow("redirect");
@@ -248,12 +252,12 @@ describe("submitSitting, responding to a round", () => {
     );
 
     insert.mockClear();
-    const missing = { ...fields, respond: ["A 1", "", "A 3"] };
+    const missing = { ...fields, "texts.1": "" };
     expect(await submitSitting({}, sittingForm(2, missing))).toMatchObject({
       error: "Please answer all 3. You can pick up to 3 feelings for each.",
       input: { respond: { kind: "answer", texts: ["A 1", "", "A 3"] } },
     });
-    const tooMany = { ...fields, "feelings.1": ["sad", "hurt", "hopeful", "curious"] };
+    const tooMany = { ...fields, "tags.1": ["sad", "hurt", "hopeful", "curious"] };
     expect(await submitSitting({}, sittingForm(2, tooMany))).toMatchObject({ error: expect.any(String) });
     expect(insert).not.toHaveBeenCalled();
   });

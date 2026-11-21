@@ -25,30 +25,26 @@ export async function writeSitting(benvolioId: string, role: Role, sitting: numb
 export async function typeSitting(page: Page, benvolioId: string, who: string, sitting: number) {
   const { stance, write, respond } = validSitting(sitting, who);
   const parts = sittingParts(sitting);
+  const yourTurn = page.getByText(statusLine({ kind: "sit", sitting }, ""), { exact: true });
   await page.goto(`/b/${benvolioId}`);
+  await expect(yourTurn).toBeVisible();
   if (stance) await page.getByLabel(STANCE).fill(stance);
-  if (respond && parts.respond) {
-    const label = parts.respond.itemLabel.toLowerCase();
-    for (let i = 0; i < 3; i++) {
-      const n = `${label} ${i + 1}`;
-      if ("texts" in respond) {
-        const field = respond.kind === "rephrase" ? `${n} in your words` : `Your answer to .*${n}`;
-        await page.getByLabel(new RegExp(field, "i")).fill(respond.texts[i]);
-      }
-      if ("tags" in respond) {
-        const feelings = page.getByRole("group", { name: new RegExp(`${n} make you feel`, "i") });
-        for (const tag of respond.tags[i]) {
-          await feelings.getByLabel(FEELINGS.find((f) => f.slug === tag)!.label).check();
-        }
+  if (respond) {
+    const item = (i: number) => `${parts.respond!.itemLabel.toLowerCase()} ${i + 1}`;
+    for (const [i, text] of ("texts" in respond ? respond.texts : []).entries()) {
+      const field = respond.kind === "rephrase" ? `${item(i)} in your words` : `Your answer to .*${item(i)}`;
+      await page.getByLabel(new RegExp(field, "i")).fill(text);
+    }
+    for (const [i, tags] of ("tags" in respond ? respond.tags : []).entries()) {
+      const feelings = page.getByRole("group", { name: new RegExp(`${item(i)} make you feel`, "i") });
+      for (const tag of tags) {
+        await feelings.getByLabel(FEELINGS.find((f) => f.slug === tag)!.label).check();
       }
     }
   }
-  if (write && parts.write) {
-    for (const [i, item] of write.entries()) {
-      await page.getByLabel(`${parts.write.itemLabel} ${i + 1}`, { exact: true }).fill(item);
-    }
+  for (const [i, item] of (write ?? []).entries()) {
+    await page.getByLabel(`${parts.write!.itemLabel} ${i + 1}`, { exact: true }).fill(item);
   }
   await page.getByRole("button", { name: "Send" }).click();
-  // Sent once the page no longer says it's this sitting's turn.
-  await expect(page.getByText(statusLine({ kind: "sit", sitting }, ""), { exact: true })).toHaveCount(0);
+  await expect(yourTurn).toHaveCount(0);
 }

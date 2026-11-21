@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 import {
   hasSubmitted,
   nextAction,
-  sittingParts,
   visibleSubmissions,
   type Conversation,
   type Role,
@@ -16,6 +15,7 @@ import styles from "../../form.module.css";
 import { DecideQuestion } from "./decide-question";
 import { RenewInvite } from "./renew-invite";
 import { SittingForm, type Revealed } from "./sitting-form";
+import { formReady } from "./sitting-input";
 
 export const metadata: Metadata = { title: "Your Benvolio" };
 
@@ -47,9 +47,7 @@ export default async function BenvolioPage({ params }: { params: Promise<{ id: s
           openingWritten={hasSubmitted(conversation, 0, "initiator")}
         />
       )}
-      {/* Reacting, agreeing and ranking come in the next change. */}
-      {action.kind === "sit" &&
-        ["rephrase", "answer", undefined].includes(sittingParts(action.sitting).respond?.kind) && (
+      {action.kind === "sit" && formReady(action.sitting) && (
           <SittingForm
             benvolioId={id}
             sitting={action.sitting}

@@ -72,7 +72,7 @@ const CHECK_IT = "Please check what you wrote.";
 const INVALID: Record<Extract<ParseResult, { ok: false }>["invalid"], string> = {
   stance: `Please write where you stand, in up to ${MAX_ITEM_LENGTH.toLocaleString("en")} characters.`,
   write: `Please write all ${ITEMS_PER_ROUND}, each up to ${MAX_ITEM_LENGTH.toLocaleString("en")} characters.`,
-  respond: CHECK_IT, // Said per kind, below.
+  respond: CHECK_IT, // Said per kind: see INVALID_RESPONSE.
   sitting: CHECK_IT,
   shape: CHECK_IT,
 };

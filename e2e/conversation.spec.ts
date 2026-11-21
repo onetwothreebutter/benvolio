@@ -11,7 +11,7 @@ import { expect, test } from "./support/test";
  * page tells them at every turn. Sittings with screens are typed; the rest go
  * straight into the database (see support/sittings.ts) until their screens exist.
  */
-const TYPED_SITTINGS = 2;
+const LAST_TYPED_SITTING = 2;
 test("two people take turns through a whole Benvolio", async ({ page, anotherPhone }, testInfo) => {
   test.setTimeout(180_000);
   await signIn(page, newPerson("Jane", testInfo));
@@ -64,7 +64,7 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
     const second = partnerOf(first);
     await test.step(`sitting ${sitting + 1} of ${LAST_SITTING + 1}`, async () => {
       const write = (role: Role) =>
-        sitting <= TYPED_SITTINGS
+        sitting <= LAST_TYPED_SITTING
           ? typeSitting(phones[role], started.id, role, sitting)
           : writeSitting(started.id, role, sitting);
       await write(first);

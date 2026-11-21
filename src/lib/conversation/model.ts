@@ -183,7 +183,6 @@ export function decideQuestion(c: Conversation, role: Role, accept: boolean): Co
   return { ...c, question: { text: proposed }, submissions };
 }
 
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -227,16 +226,19 @@ function parseRanks(value: unknown): [number, number, number] | null {
     : null;
 }
 
-const RESPONSE_FIELDS: Record<ResponseKind, string[]> = {
-  rephrase: ["kind", "texts"],
-  answer: ["kind", "texts", "tags"],
-  react: ["kind", "tags"],
-  agree: ["kind", "agree", "tags"],
-  rank: ["kind", "ranks"],
+export type ResponseField = "texts" | "tags" | "agree" | "ranks";
+
+/** The fields each kind of response has, besides its kind: one value per item. */
+export const RESPONSE_FIELDS: Record<ResponseKind, readonly ResponseField[]> = {
+  rephrase: ["texts"],
+  answer: ["texts", "tags"],
+  react: ["tags"],
+  agree: ["agree", "tags"],
+  rank: ["ranks"],
 };
 
 function parseResponse(value: unknown, kind: ResponseKind): Response | null {
-  if (!isRecord(value) || value.kind !== kind || !hasOnlyKeys(value, RESPONSE_FIELDS[kind])) {
+  if (!isRecord(value) || value.kind !== kind || !hasOnlyKeys(value, ["kind", ...RESPONSE_FIELDS[kind]])) {
     return null;
   }
   switch (kind) {

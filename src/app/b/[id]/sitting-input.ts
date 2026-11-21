@@ -1,4 +1,4 @@
-import { sittingParts } from "@/lib/conversation/model";
+import { RESPONSE_FIELDS, sittingParts, type ResponseField } from "@/lib/conversation/model";
 import { ITEMS_PER_ROUND, type ResponseKind } from "@/lib/conversation/rounds";
 
 /** The sitting form's field names, shared by the form and the action. */
@@ -7,20 +7,33 @@ export const FIELD = {
   question: "question",
   stance: "stance",
   write: "write",
-  /** A text for each of the partner's items, in order. */
-  respond: "respond",
-  /** The feelings tagged on the partner's item i. */
-  feelings: (i: number) => `feelings.${i}`,
+  /** A response's value for the partner's item i, by response field. */
+  respond: (field: ResponseField, i: number) => `${field}.${i}`,
 } as const;
+
+/** The response fields the form has controls for so far. */
+const BUILT: ReadonlySet<ResponseField> = new Set(["texts", "tags"]);
+
+/** Whether the form can take this sitting yet. Agreeing and ranking come next. */
+export function formReady(sitting: number): boolean {
+  const { respond } = sittingParts(sitting);
+  return !respond || RESPONSE_FIELDS[respond.kind].every((field) => BUILT.has(field));
+}
 
 /** What was typed in a sitting's form, before the model checks it. */
 export type SittingInput = {
   stance?: string;
   write?: string[];
-  respond?: { kind: ResponseKind; texts?: string[]; tags?: string[][] };
+  respond?: { kind: ResponseKind } & Partial<Record<ResponseField, unknown[]>>;
 };
 
-const each = <T>(read: (i: number) => T): T[] => Array.from({ length: ITEMS_PER_ROUND }, (_, i) => read(i));
+/** How each response field reads one item's value from the form. */
+const READ: Record<ResponseField, (form: FormData, name: string) => unknown> = {
+  texts: (form, name) => text(form.get(name)),
+  tags: (form, name) => form.getAll(name).map(String),
+  agree: (form, name) => ({ agree: true, disagree: false })[String(form.get(name))],
+  ranks: (form, name) => Number(form.get(name)),
+};
 
 /**
  * Decodes the sitting form into the shape the model's parser checks. Each part
@@ -33,18 +46,11 @@ export function sittingInput(sitting: number, form: FormData): SittingInput {
   if (parts.write) input.write = form.getAll(FIELD.write).map(text);
   if (parts.respond) {
     const { kind } = parts.respond;
-    const texts = () => form.getAll(FIELD.respond).map(text);
-    const tags = () => each((i) => form.getAll(FIELD.feelings(i)).map(String));
-    switch (kind) {
-      case "rephrase":
-        input.respond = { kind, texts: texts() };
-        break;
-      case "answer":
-        input.respond = { kind, texts: texts(), tags: tags() };
-        break;
-      default:
-        // Reacting, agreeing and ranking come in the next change.
-        input.respond = { kind };
+    input.respond = { kind };
+    for (const field of RESPONSE_FIELDS[kind]) {
+      input.respond[field] = Array.from({ length: ITEMS_PER_ROUND }, (_, i) =>
+        READ[field](form, FIELD.respond(field, i)),
+      );
     }
   }
   return input;
