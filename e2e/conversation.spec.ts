@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { LAST_SITTING, partnerOf, type NextAction, type Role } from "@/lib/conversation/model";
 import { statusLine } from "@/lib/conversation/status";
 import { joinFromInvite, newPerson, signIn, startBenvolio } from "./support/people";
-import { acceptProposedQuestion, writeSitting } from "./support/sittings";
+import { writeSitting } from "./support/sittings";
 import { expect, test } from "./support/test";
 
 /**
@@ -46,9 +46,11 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
     initiator: { kind: "decide_question", proposed: "Should we get a dog this year?" },
     recipient: { kind: "wait_for_question" },
   });
-  // Accepting it reopens Jane's opening (the helper does this for now, as the
-  // model's decideQuestion does), so her stance answers the new wording.
-  await acceptProposedQuestion(started.id);
+  // Accepting it reopens Jane's opening, so her stance answers the new wording.
+  await expect(page.getByText("Should we get a dog this year?", { exact: true })).toBeVisible();
+  await expect(page.getByText("you'll write your opening again")).toBeVisible();
+  await page.getByRole("button", { name: "Use the new wording" }).click();
+  await expect(page.getByRole("heading", { name: "Should we get a dog this year?" })).toBeVisible();
   await expectNext(both({ kind: "sit", sitting: 0 }));
   for (const phone of Object.values(phones)) {
     await expect(phone.getByRole("heading", { name: "Should we get a dog this year?" })).toBeVisible();
@@ -71,4 +73,24 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
       );
     });
   }
+});
+
+test("the initiator can keep their own wording", async ({ page, anotherPhone }, testInfo) => {
+  await signIn(page, newPerson("Jane", testInfo));
+  const started = await startBenvolio(page, newPerson("Rhonda", testInfo), "Should we get a dog?");
+  const rhondasPhone = await anotherPhone();
+  await joinFromInvite(rhondasPhone, started.inviteUrl, newPerson("Rhonda", testInfo), "A dog or a cat?");
+  await expect(rhondasPhone).toHaveURL(`/b/${started.id}`);
+
+  // Jane hasn't written her opening, so there's nothing to rewrite.
+  await page.goto(`/b/${started.id}`);
+  await expect(page.getByText("you'll write your opening again")).toHaveCount(0);
+  await page.getByRole("button", { name: "Keep my wording" }).click();
+  await expect(page.getByText(statusLine({ kind: "sit", sitting: 0 }, ""))).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Should we get a dog?" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Keep my wording" })).toHaveCount(0);
+
+  await rhondasPhone.reload();
+  await expect(rhondasPhone.getByText(statusLine({ kind: "sit", sitting: 0 }, ""))).toBeVisible();
+  await expect(rhondasPhone.getByRole("heading", { name: "Should we get a dog?" })).toBeVisible();
 });

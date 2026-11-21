@@ -39,17 +39,17 @@ nothing needs resetting between runs.
 - `invite.spec.ts`: joining from the link (signed in or not, any email, by
   code or emailed link), stopping at the name step, used, expired, own and
   made-up links, strangers.
-- `conversation.spec.ts`: rewording the question, then a whole Benvolio, both
-  people, all six sittings to the finish, checking what each person's page
-  says at every turn.
+- `conversation.spec.ts`: rewording the question (used or kept), then a whole
+  Benvolio, both people, all six sittings to the finish, checking what each
+  person's page says at every turn.
 - `dead-ends.spec.ts`: 404s, signed-out redirects, broken links, unsafe `next`.
 
 Not covered, as each needs a fault or timing the tests can't arrange: the
 global error page, "We couldn't send the email", the "Too many tries" message,
 and opening the emailed link in a different browser from the one that asked.
 
-The writing screens and the button to accept new wording aren't built yet, so
-`conversation.spec.ts` puts that writing into the database
+The writing screens aren't built yet, so `conversation.spec.ts` puts that
+writing into the database
 (`support/sittings.ts`, using the fixtures the unit tests check against the
 model's parser). When those screens land, switch it to typing into them.
 

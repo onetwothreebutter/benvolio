@@ -14,30 +14,3 @@ export async function writeSitting(benvolioId: string, role: Role, sitting: numb
   if (error) throw new Error(`Writing sitting ${sitting} failed: ${error.message}`);
 }
 
-/**
- * Stands in for the initiator accepting the partner's new wording, which has
- * no button yet. Does what decideQuestion in the model does: the wording
- * becomes the question, and the initiator's opening reopens.
- */
-export async function acceptProposedQuestion(benvolioId: string) {
-  const db = adminDatabase();
-  const { data, error } = await db
-    .from("benvolios")
-    .select("proposed_question")
-    .eq("id", benvolioId)
-    .single();
-  if (error || !data.proposed_question) throw new Error("No wording to accept");
-  const results = await Promise.all([
-    db
-      .from("benvolios")
-      .update({ question: data.proposed_question, proposed_question: null })
-      .eq("id", benvolioId),
-    db
-      .from("submissions")
-      .delete()
-      .match({ benvolio_id: benvolioId, sitting: 0, role: "initiator" }),
-  ]);
-  for (const { error } of results) {
-    if (error) throw new Error(`Accepting the wording failed: ${error.message}`);
-  }
-}

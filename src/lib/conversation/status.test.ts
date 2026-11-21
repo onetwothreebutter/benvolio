@@ -4,7 +4,7 @@ import { statusLine } from "./status";
 describe("statusLine", () => {
   it("tells each person what happens next", () => {
     expect(statusLine({ kind: "decide_question", proposed: "Why?" }, "Rhonda")).toBe(
-      "Rhonda suggested new wording: “Why?”",
+      "Rhonda suggested new wording for the question:",
     );
     expect(statusLine({ kind: "wait_for_question" }, "Jane")).toBe(
       "Waiting for Jane to agree to your wording.",

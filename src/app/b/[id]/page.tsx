@@ -6,6 +6,7 @@ import { withNext } from "@/lib/auth/safe-next";
 import { getProfile, requireSignedIn } from "@/lib/auth/session";
 import { loadBenvolio } from "@/lib/db/load-benvolio";
 import styles from "../../form.module.css";
+import { DecideQuestion } from "./decide-question";
 import { RenewInvite } from "./renew-invite";
 
 export const metadata: Metadata = { title: "Your Benvolio" };
@@ -19,6 +20,7 @@ export default async function BenvolioPage({ params }: { params: Promise<{ id: s
   if (!profile) redirect(withNext("/welcome", here));
   if (!benvolio) notFound();
   const { conversation, role, partnerName } = benvolio;
+  const action = nextAction(conversation, role);
   return (
     <main className={styles.main}>
       <p className={styles.hint}>With {partnerName}</p>
@@ -29,7 +31,14 @@ export default async function BenvolioPage({ params }: { params: Promise<{ id: s
           <RenewInvite benvolioId={id} partnerName={partnerName} />
         </>
       )}
-      <p>{statusLine(nextAction(conversation, role), partnerName)}</p>
+      <p>{statusLine(action, partnerName)}</p>
+      {action.kind === "decide_question" && (
+        <DecideQuestion
+          benvolioId={id}
+          proposed={action.proposed}
+          openingWritten={conversation.submissions[0]?.initiator !== undefined}
+        />
+      )}
     </main>
   );
 }
