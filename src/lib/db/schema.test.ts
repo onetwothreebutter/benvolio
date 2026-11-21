@@ -318,7 +318,13 @@ describe("starting and joining", () => {
     ]);
     // Rhonda signs up as "Ronnie": her own name replaces the one Jane typed.
     await asService("update public.people set first_name = 'Ronnie' where id = $1", [RHONDA]);
+    await asService("update public.benvolios set active_at = '2026-01-01' where id = $1", [id]);
     expect(await joinAs(RHONDA)).toBe(id);
+    // Joining counts as a move, for reminders.
+    expect(
+      (await asService("select active_at > now() - interval '1 hour' as moved from public.benvolios where id = $1", [id]))
+        .rows,
+    ).toEqual([{ moved: true }]);
     expect(
       (
         await as(
@@ -421,5 +427,32 @@ describe("starting and joining", () => {
     expect(allowed("anon")).toEqual([false, false, false, false]);
     expect(allowed("authenticated")).toEqual([false, false, false, false]);
     expect(allowed("service_role")).toEqual([true, true, true, true]);
+  });
+});
+
+describe("when a Benvolio last moved", () => {
+  const LONG_AGO = "2026-01-01T00:00:00Z";
+  const age = async () => {
+    const { rows } = await asService("select active_at < now() - interval '1 day' as old from public.benvolios where id = $1", [B]);
+    return (rows[0] as { old: boolean }).old ? "old" : "now";
+  };
+  beforeEach(() => asService("update public.benvolios set active_at = $2 where id = $1", [B, LONG_AGO]));
+
+  it("starts now, and moves on each sitting sent", async () => {
+    expect(await age()).toBe("old");
+    await submit(0, "initiator");
+    expect(await age()).toBe("now");
+  });
+
+  it("moves when the question's wording is decided, and not on other changes", async () => {
+    await asService("update public.benvolios set pace = 'weekly' where id = $1", [B]);
+    expect(await age()).toBe("old");
+    // Nothing to decide: nothing moves.
+    await asService("select public.decide_question($1, $2, false)", [B, JANE]);
+    expect(await age()).toBe("old");
+    await asService("update public.benvolios set proposed_question = 'Cats?', active_at = $2 where id = $1", [B, LONG_AGO]);
+    await asService("update public.benvolios set active_at = $2 where id = $1", [B, LONG_AGO]);
+    await asService("select public.decide_question($1, $2, false)", [B, JANE]);
+    expect(await age()).toBe("now");
   });
 });
