@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import {
   hasSubmitted,
   nextAction,
+  partnerOf,
   visibleSubmissions,
   type Conversation,
   type Role,
@@ -11,6 +12,8 @@ import { statusLine } from "@/lib/conversation/status";
 import { withNext } from "@/lib/auth/safe-next";
 import { getProfile, requireSignedIn } from "@/lib/auth/session";
 import { loadBenvolio } from "@/lib/db/load-benvolio";
+import { Masthead } from "../../masthead";
+import { PersonMark } from "../../person-mark";
 import styles from "../../form.module.css";
 import { DecideQuestion } from "./decide-question";
 import { RenewInvite } from "./renew-invite";
@@ -30,15 +33,18 @@ export default async function BenvolioPage({ params }: { params: Promise<{ id: s
   const action = nextAction(conversation, role);
   return (
     <main className={styles.main}>
-      <p className={styles.hint}>With {partnerName}</p>
-      <h1>{conversation.question.text}</h1>
+      <Masthead />
+      <PersonMark name={partnerName} role={partnerOf(role)}>
+        With {partnerName}
+      </PersonMark>
+      <h1 className={styles.question}>{conversation.question.text}</h1>
       {role === "initiator" && !conversation.recipientJoined && (
         <>
           <p>{partnerName} hasn&apos;t accepted your invite yet.</p>
           <RenewInvite benvolioId={id} partnerName={partnerName} />
         </>
       )}
-      <p>{statusLine(action, partnerName)}</p>
+      <p className={styles.status}>{statusLine(action, partnerName)}</p>
       {action.kind === "decide_question" && (
         <DecideQuestion
           benvolioId={id}

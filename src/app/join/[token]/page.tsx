@@ -4,6 +4,8 @@ import { getSignedIn, requirePerson } from "@/lib/auth/session";
 import { withNext } from "@/lib/auth/safe-next";
 import { findInvite, type OpenInvite } from "@/lib/invites/lookup";
 import { INVITE_GONE, OWN_INVITE } from "@/lib/invites/messages";
+import { Masthead } from "../../masthead";
+import { PersonMark } from "../../person-mark";
 import styles from "../../form.module.css";
 import { JoinForm } from "./join-form";
 
@@ -13,7 +15,12 @@ export const metadata: Metadata = { title: "You're invited", referrer: "no-refer
 export default async function JoinPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const [invite, signedIn] = await Promise.all([findInvite(token), getSignedIn()]);
-  return <main className={styles.main}>{await body(token, invite, signedIn?.userId)}</main>;
+  return (
+    <main className={styles.main}>
+      <Masthead />
+      {await body(token, invite, signedIn?.userId)}
+    </main>
+  );
 }
 
 async function body(token: string, invite: OpenInvite | null, userId?: string) {
@@ -30,6 +37,9 @@ async function body(token: string, invite: OpenInvite | null, userId?: string) {
 
   const intro = (
     <>
+      <PersonMark name={invite.initiatorName} role="initiator">
+        From {invite.initiatorName}
+      </PersonMark>
       <h1>{invite.initiatorName} would like to talk with you</h1>
       <p className={styles.hint}>
         Benvolio is a conversation in turns, over a few days. Each of you writes privately, and you
@@ -41,14 +51,10 @@ async function body(token: string, invite: OpenInvite | null, userId?: string) {
     return (
       <>
         {intro}
-        <div className={styles.form}>
-          <p>
-            <strong>{invite.question}</strong>
-          </p>
-          <Link href={withNext("/sign-in", here)} className={styles.button}>
-            Sign in to join
-          </Link>
-        </div>
+        <p className={styles.question}>“{invite.question}”</p>
+        <Link href={withNext("/sign-in", here)} className={styles.button}>
+          Sign in to join
+        </Link>
       </>
     );
   }

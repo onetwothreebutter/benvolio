@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Masthead } from "../../masthead";
 import styles from "../../form.module.css";
 import { confirmSignIn } from "./actions";
 
@@ -19,6 +20,7 @@ export default async function ConfirmPage({
   const { token_hash: tokenHash = "" } = await searchParams;
   return (
     <main className={styles.main}>
+      <Masthead />
       <h1>Sign in to Benvolio</h1>
       <form action={confirmSignIn} className={styles.form}>
         <input type="hidden" name="token_hash" value={tokenHash} />

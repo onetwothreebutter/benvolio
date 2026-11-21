@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { safeNext } from "@/lib/auth/safe-next";
+import { Masthead } from "../masthead";
 import styles from "../form.module.css";
 import { SignInForm } from "./sign-in-form";
 
@@ -13,6 +14,7 @@ export default async function SignInPage({
   const { next, error } = await searchParams;
   return (
     <main className={styles.main}>
+      <Masthead />
       <h1>Sign in</h1>
       {error === "link" && (
         <p role="alert" className={styles.error}>

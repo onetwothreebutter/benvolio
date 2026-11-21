@@ -1,20 +1,38 @@
-/* --bg is mirrored in viewport.themeColor in layout.tsx. */
+/*
+ * Benvolio's look: a slow exchange of letters. Light is paper by a window,
+ * dark is the same room by lamplight. People's own words are set in the serif
+ * (--font-serif); the interface around them in the sans.
+ *
+ * --bg is mirrored in viewport.themeColor in layout.tsx.
+ */
 :root {
-  /* Native controls (radios, text boxes) follow the theme too. */
   color-scheme: light dark;
-  --bg: #f7f1e8;
-  --text: #2b2420;
-  --muted: #6b5f57;
-  --accent: #a84b29;
-  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --bg: #f5efe4;
+  --text: #2a2320;
+  --muted: #685b51;
+  --rule: #dacdba;
+  --button: #2a2320;
+  --button-text: #f5efe4;
+  --alert: #a3302a;
+  /* Each person writes in their own ink: the one who started in blue-black,
+     the one invited in rust, the same on both phones. */
+  --ink-initiator: #2d4a70;
+  --ink-recipient: #95401f;
+  --font: var(--font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --serif: var(--font-serif), Georgia, "Times New Roman", serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1f1a17;
-    --text: #f3ebe1;
-    --muted: #b7a99c;
-    --accent: #e08a62;
+    --bg: #1c1713;
+    --text: #f0e5d4;
+    --muted: #b3a391;
+    --rule: #3d342b;
+    --button: #ebcb8f;
+    --button-text: #1c1713;
+    --alert: #f2a097;
+    --ink-initiator: #a3bbdb;
+    --ink-recipient: #e59a72;
   }
 }
 
@@ -27,11 +45,33 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
+  font-size: 1rem;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
-/* The browser's default link blue is unreadable on the dark background. */
+h1,
+h2 {
+  font-family: var(--serif);
+  font-weight: 400;
+  line-height: 1.15;
+  margin: 0;
+}
+
+h1 {
+  font-size: 2rem;
+}
+
+h2 {
+  font-size: 1.6rem;
+}
+
 a {
-  color: var(--accent);
+  color: inherit;
+  text-underline-offset: 0.2em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 3px;
 }
