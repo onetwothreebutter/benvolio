@@ -14,17 +14,27 @@ export type Email = {
   idempotencyKey: string;
 };
 
-/** Email is off without RESEND_API_KEY, as in local development and tests. */
+/** Email is off without RESEND_API_KEY, as in local development and unit tests. */
 export function emailEnabled(): boolean {
   return Boolean(process.env.RESEND_API_KEY);
+}
+
+/**
+ * Resend's API, or the end-to-end tests' stand-in (e2e/support/fake-resend.ts)
+ * named by RESEND_API_URL. Only a localhost stand-in counts, so a stray
+ * setting can never send the real key and addresses anywhere else.
+ */
+function apiUrl(): string {
+  const override = process.env.RESEND_API_URL;
+  if (override && ["localhost", "127.0.0.1"].includes(new URL(override).hostname)) return override;
+  return "https://api.resend.com";
 }
 
 /** Sends one email through Resend's API. Throws if Resend refuses it. */
 export async function sendEmail({ to, subject, html, text, tags, idempotencyKey }: Email): Promise<void> {
   const key = process.env.RESEND_API_KEY;
   if (!key) throw new Error("Set RESEND_API_KEY (see .env.example)");
-  // RESEND_API_URL is for the end-to-end tests' stand-in only (e2e/support/fake-resend.ts).
-  const response = await fetch(`${process.env.RESEND_API_URL || "https://api.resend.com"}/emails`, {
+  const response = await fetch(`${apiUrl()}/emails`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${key}`,
