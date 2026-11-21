@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { hasSubmitted, nextAction } from "@/lib/conversation/model";
+import {
+  hasSubmitted,
+  nextAction,
+  sittingParts,
+  visibleSubmissions,
+  type Conversation,
+  type Role,
+} from "@/lib/conversation/model";
 import { statusLine } from "@/lib/conversation/status";
 import { withNext } from "@/lib/auth/safe-next";
 import { getProfile, requireSignedIn } from "@/lib/auth/session";
@@ -8,7 +15,7 @@ import { loadBenvolio } from "@/lib/db/load-benvolio";
 import styles from "../../form.module.css";
 import { DecideQuestion } from "./decide-question";
 import { RenewInvite } from "./renew-invite";
-import { SittingForm } from "./sitting-form";
+import { SittingForm, type Revealed } from "./sitting-form";
 
 export const metadata: Metadata = { title: "Your Benvolio" };
 
@@ -40,15 +47,26 @@ export default async function BenvolioPage({ params }: { params: Promise<{ id: s
           openingWritten={hasSubmitted(conversation, 0, "initiator")}
         />
       )}
-      {/* Responding to a round comes in the next change. */}
-      {action.kind === "sit" && action.sitting === 0 && (
-        <SittingForm
-          benvolioId={id}
-          sitting={action.sitting}
-          partnerName={partnerName}
-          question={conversation.question.text}
-        />
-      )}
+      {/* Reacting, agreeing and ranking come in the next change. */}
+      {action.kind === "sit" &&
+        ["rephrase", "answer", undefined].includes(sittingParts(action.sitting).respond?.kind) && (
+          <SittingForm
+            benvolioId={id}
+            sitting={action.sitting}
+            partnerName={partnerName}
+            question={conversation.question.text}
+            revealed={revealedFor(conversation, action.sitting, role)}
+          />
+        )}
     </main>
   );
+}
+
+/** What the partner wrote for the round this sitting responds to, if any. */
+function revealedFor(c: Conversation, sitting: number, role: Role): Revealed | undefined {
+  if (sitting === 0) return undefined;
+  const partner = visibleSubmissions(c, sitting - 1, role).partner;
+  // A sitting is only ever your turn once the one before it is revealed.
+  if (!partner?.write) throw new Error(`Sitting ${sitting - 1} isn't revealed`);
+  return { items: partner.write, stance: partner.stance };
 }

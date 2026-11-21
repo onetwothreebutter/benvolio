@@ -1,4 +1,5 @@
 import { cleanText } from "@/lib/text";
+import { isFeeling, MAX_FEELINGS_PER_ITEM } from "./feelings";
 import { ITEMS_PER_ROUND, ROUNDS, type ResponseKind, type Round } from "./rounds";
 
 /**
@@ -29,7 +30,7 @@ export type Tags = [string[], string[], string[]];
 export type Response =
   /** Rewrite each item in your own words. */
   | { kind: "rephrase"; texts: Items }
-  /** Answer each item, optionally tagging how it made you feel. */
+  /** Answer each item, optionally tagging how it made you feel (see feelings.ts). */
   | { kind: "answer"; texts: Items; tags: Tags }
   /** Optionally tag each item with how it made you feel. */
   | { kind: "react"; tags: Tags }
@@ -182,8 +183,6 @@ export function decideQuestion(c: Conversation, role: Role, accept: boolean): Co
   return { ...c, question: { text: proposed }, submissions };
 }
 
-const TAG = /^[a-z0-9_]{1,30}$/;
-const MAX_TAGS_PER_ITEM = 3;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -204,9 +203,9 @@ function parseTags(value: unknown): Tags | null {
   const ok = value.every(
     (tags) =>
       Array.isArray(tags) &&
-      tags.length <= MAX_TAGS_PER_ITEM &&
+      tags.length <= MAX_FEELINGS_PER_ITEM &&
       new Set(tags).size === tags.length &&
-      tags.every((tag) => typeof tag === "string" && TAG.test(tag)),
+      tags.every(isFeeling),
   );
   return ok ? (value.map((tags: string[]) => [...tags]) as Tags) : null;
 }
@@ -274,12 +273,15 @@ function parseResponse(value: unknown, kind: ResponseKind): Response | null {
 export function sittingParts(sitting: number): {
   stance: boolean;
   write?: Round["write"] & { round: number };
-  respond?: Round["respond"] & { round: number };
+  respond?: Round["respond"] & { round: number; itemLabel: string };
 } {
   return {
     stance: sitting === 0,
     write: sitting < LAST_SITTING ? { ...ROUNDS[sitting].write, round: sitting + 1 } : undefined,
-    respond: sitting > 0 ? { ...ROUNDS[sitting - 1].respond, round: sitting } : undefined,
+    respond:
+      sitting > 0
+        ? { ...ROUNDS[sitting - 1].respond, round: sitting, itemLabel: ROUNDS[sitting - 1].write.itemLabel }
+        : undefined,
   };
 }
 

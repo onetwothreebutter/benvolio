@@ -70,3 +70,20 @@
   border-left: 3px solid var(--accent);
   font-size: 1.1rem;
 }
+
+.feelings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.feelings legend {
+  margin-bottom: 0.4rem;
+}
+
+.feeling {
+  white-space: nowrap;
+}

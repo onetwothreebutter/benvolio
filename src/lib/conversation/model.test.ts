@@ -187,11 +187,15 @@ describe("sittingParts", () => {
     expect(sittingParts(2)).toEqual({
       stance: false,
       write: { ...ROUNDS[2].write, round: 3 },
-      respond: { ...ROUNDS[1].respond, round: 2 },
+      respond: { ...ROUNDS[1].respond, round: 2, itemLabel: ROUNDS[1].write.itemLabel },
     });
     expect(sittingParts(ROUNDS.length)).toEqual({
       stance: false,
-      respond: { ...ROUNDS[ROUNDS.length - 1].respond, round: ROUNDS.length },
+      respond: {
+        ...ROUNDS[ROUNDS.length - 1].respond,
+        round: ROUNDS.length,
+        itemLabel: ROUNDS[ROUNDS.length - 1].write.itemLabel,
+      },
     });
   });
 });
@@ -242,8 +246,9 @@ describe("parseSubmission", () => {
     ["the wrong response kind", 1, { respond: { kind: "react", tags: noTags }, write: three("q") }, "respond"],
     ["an extra response field", 3, { respond: { kind: "react", tags: noTags, texts: three("x") }, write: three("a") }, "respond"],
     ["a badly formed tag", 2, { respond: { kind: "answer", texts: three("a"), tags: [["#Sad face"], [], []] }, write: three("s") }, "respond"],
+    ["a feeling not on the list", 3, { respond: { kind: "react", tags: [["smug"], [], []] }, write: three("a") }, "respond"],
     ["a repeated tag", 3, { respond: { kind: "react", tags: [["sad", "sad"], [], []] }, write: three("a") }, "respond"],
-    ["too many tags", 3, { respond: { kind: "react", tags: [["a", "b", "c", "d"], [], []] }, write: three("a") }, "respond"],
+    ["too many tags", 3, { respond: { kind: "react", tags: [["sad", "hurt", "hopeful", "curious"], [], []] }, write: three("a") }, "respond"],
     ["two agree marks", 4, { respond: { kind: "agree", agree: [true, false], tags: noTags }, write: three("c") }, "respond"],
     ["a repeated rank", 5, { respond: { kind: "rank", ranks: [1, 1, 3] } }, "respond"],
     ["two ranks", 5, { respond: { kind: "rank", ranks: [1, 2] } }, "respond"],

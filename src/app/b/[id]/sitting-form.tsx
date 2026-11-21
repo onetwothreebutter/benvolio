@@ -1,11 +1,15 @@
 "use client";
 
 import { useActionState } from "react";
-import { MAX_ITEM_LENGTH, sittingParts } from "@/lib/conversation/model";
-import { ITEMS_PER_ROUND } from "@/lib/conversation/rounds";
+import { FEELINGS, MAX_FEELINGS_PER_ITEM } from "@/lib/conversation/feelings";
+import { MAX_ITEM_LENGTH, sittingParts, type Items } from "@/lib/conversation/model";
+import { ITEMS_PER_ROUND, type ResponseKind } from "@/lib/conversation/rounds";
 import styles from "../../form.module.css";
 import { submitSitting, type SitState } from "./actions";
-import { FIELD } from "./sitting-input";
+import { FIELD, type SittingInput } from "./sitting-input";
+
+/** The partner's writing this sitting responds to, once revealed. */
+export type Revealed = { items: Items; stance?: string };
 
 /** What this person writes in a sitting, sent all at once. */
 export function SittingForm({
@@ -13,15 +17,18 @@ export function SittingForm({
   sitting,
   partnerName,
   question,
+  revealed,
 }: {
   benvolioId: string;
   sitting: number;
   partnerName: string;
   /** The question as this page shows it. */
   question: string;
+  /** Required in every sitting but the opening. */
+  revealed?: Revealed;
 }) {
   const [state, action, pending] = useActionState<SitState, FormData>(submitSitting, {});
-  const { stance, write } = sittingParts(sitting);
+  const { stance, write, respond } = sittingParts(sitting);
   // React clears the form after every submit, so errors carry the typed values back.
   const typed = state.input;
 
@@ -30,6 +37,28 @@ export function SittingForm({
       <input type="hidden" name="benvolio_id" value={benvolioId} />
       <input type="hidden" name="sitting" value={sitting} />
       <input type="hidden" name={FIELD.question} value={state.question ?? question} />
+
+      {respond && revealed && (
+        <fieldset className={styles.form}>
+          <legend className={styles.label}>{respond.prompt}</legend>
+          {respond.help && <p className={styles.hint}>{respond.help}</p>}
+          {revealed.stance && (
+            <p>
+              {partnerName}&apos;s view: {revealed.stance}
+            </p>
+          )}
+          {revealed.items.map((item, i) => (
+            <Respond
+              key={i}
+              kind={respond.kind}
+              label={`${partnerName}'s ${respond.itemLabel.toLowerCase()} ${i + 1}`}
+              item={item}
+              index={i}
+              typed={typed?.respond}
+            />
+          ))}
+        </fieldset>
+      )}
 
       {stance && (
         <>
@@ -81,5 +110,59 @@ export function SittingForm({
         {partnerName} won&apos;t see this until they&apos;ve written theirs.
       </p>
     </form>
+  );
+}
+
+/** The response to one of the partner's items, shaped by the round. */
+function Respond({
+  kind,
+  label,
+  item,
+  index,
+  typed,
+}: {
+  kind: ResponseKind;
+  label: string;
+  item: string;
+  index: number;
+  typed?: SittingInput["respond"];
+}) {
+  const id = `item-${index}`;
+  return (
+    <div className={styles.form}>
+      <p id={id} className={styles.quote}>
+        {item}
+      </p>
+      {(kind === "rephrase" || kind === "answer") && (
+        <textarea
+          name={FIELD.respond}
+          rows={3}
+          maxLength={MAX_ITEM_LENGTH}
+          required
+          aria-label={kind === "rephrase" ? `${label} in your words` : `Your answer to ${label}`}
+          aria-describedby={id}
+          defaultValue={typed?.texts?.[index]}
+          className={styles.input}
+        />
+      )}
+      {kind === "answer" && (
+        <Feelings name={FIELD.feelings(index)} about={label} checked={typed?.tags?.[index]} />
+      )}
+    </div>
+  );
+}
+
+/** Optional feeling tags for one item. */
+function Feelings({ name, about, checked }: { name: string; about: string; checked?: string[] }) {
+  return (
+    <fieldset className={styles.feelings}>
+      <legend className={styles.hint}>How did {about} make you feel? Pick up to {MAX_FEELINGS_PER_ITEM}, if any.</legend>
+      {FEELINGS.map(({ slug, label }) => (
+        <label key={slug} className={styles.feeling}>
+          <input type="checkbox" name={name} value={slug} defaultChecked={checked?.includes(slug)} />{" "}
+          {label}
+        </label>
+      ))}
+    </fieldset>
   );
 }
