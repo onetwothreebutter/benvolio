@@ -10,11 +10,20 @@ import { STANCE } from "./screen";
  * valid submissions, and sends it.
  */
 export async function typeSitting(page: Page, benvolioId: string, who: string, sitting: number) {
+  await fillSitting(page, benvolioId, who, sitting);
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(yourTurn(page, sitting)).toHaveCount(0);
+}
+
+const yourTurn = (page: Page, sitting: number) =>
+  page.getByText(statusLine({ kind: "sit", sitting }, ""), { exact: true });
+
+/** Opens the Benvolio's page and types a sitting as `who`, without sending it. */
+export async function fillSitting(page: Page, benvolioId: string, who: string, sitting: number) {
   const { stance, write, respond } = validSitting(sitting, who);
   const parts = sittingParts(sitting);
-  const yourTurn = page.getByText(statusLine({ kind: "sit", sitting }, ""), { exact: true });
   await page.goto(`/b/${benvolioId}`);
-  await expect(yourTurn).toBeVisible();
+  await expect(yourTurn(page, sitting)).toBeVisible();
   // What the partner wrote for the round this sitting responds to is on screen.
   const partner = sitting > 0 && validSitting(sitting - 1, who === "initiator" ? "recipient" : "initiator");
   for (const item of (partner && partner.write) || []) await expect(page.getByText(item)).toBeVisible();
@@ -44,6 +53,4 @@ export async function typeSitting(page: Page, benvolioId: string, who: string, s
   for (const [i, item] of (write ?? []).entries()) {
     await page.getByLabel(`${parts.write!.itemLabel} ${i + 1}`, { exact: true }).fill(item);
   }
-  await page.getByRole("button", { name: "Send" }).click();
-  await expect(yourTurn).toHaveCount(0);
 }
