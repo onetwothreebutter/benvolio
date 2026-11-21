@@ -1,9 +1,9 @@
 // @vitest-environment node
 import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { describe, expect, it, vi } from "vitest";
+import { config } from "./middleware";
 
 vi.mock("@supabase/ssr", () => ({ createServerClient: vi.fn() }));
-const { config } = await import("./middleware");
 
 const runsOn = (url: string) => unstable_doesMiddlewareMatch({ config, url });
 
