@@ -53,6 +53,12 @@ way as sign-in codes, by recipient and subject.
 - `emails.spec.ts`: turn emails to the right person at each step (ready to
   begin, partner waiting, writing to read, new wording, wording settled),
   never to the person acting, each with a link that opens the Benvolio.
+- `reminders.spec.ts`: the daily check-in refuses calls without
+  `CRON_SECRET`, reminds only the person whose turn it has been for a few
+  quiet days (time passes by moving `active_at` back), links to the
+  Benvolio, and sends nothing more on a second run. Locally, Benvolios left
+  by earlier runs go quiet too and get reminders in Mailpit; `npx supabase
+  db reset` clears them.
 - `dead-ends.spec.ts`: 404s, signed-out redirects, broken links, unsafe `next`.
 
 Not covered, as each needs a fault or timing the tests can't arrange: the

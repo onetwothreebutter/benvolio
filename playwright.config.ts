@@ -1,4 +1,5 @@
 import { defineConfig } from "@playwright/test";
+import { CRON_SECRET } from "./e2e/support/cron";
 import { localSupabase } from "./e2e/support/local-supabase";
 import { PHONE } from "./e2e/support/phone";
 
@@ -60,6 +61,7 @@ export default defineConfig({
         SENTRY_AUTH_TOKEN: "",
         RESEND_API_KEY,
         RESEND_API_URL: `http://localhost:${FAKE_RESEND_PORT}`,
+        CRON_SECRET,
       },
     },
   ],

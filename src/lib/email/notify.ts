@@ -2,13 +2,13 @@ import "server-only";
 import * as Sentry from "@sentry/nextjs";
 import { after } from "next/server";
 import { partnerOf, type Role } from "@/lib/conversation/model";
-import { loadBenvolioForEmail } from "@/lib/db/load-benvolio";
+import { loadBenvoliosForEmail, type BenvolioForEmail } from "@/lib/db/load-benvolio";
 import { isDuplicate } from "@/lib/db/rpc-error";
-import { siteUrl } from "@/lib/site-url";
+import { benvolioUrl } from "@/lib/site-url";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { emailEnabled, sendEmail } from "./resend";
 import { finishedEmail, questionProposedEmail, yourTurnEmail, type Message } from "./templates";
-import { turnNotice } from "./turn-notice";
+import { turnNotice, type TurnNotice } from "./turn-notice";
 
 /** The email_kind enum in supabase/migrations. */
 export type EmailKind = "invite" | "question_proposed" | "your_turn" | "reminder" | "finished";
@@ -59,27 +59,46 @@ export async function sendOnce(notification: Notification, personId: string, mes
   return true;
 }
 
-/**
- * Emails whoever has something new to do in a Benvolio after `actor` changed
- * it (see turnNotice). The actor is on the page already, so
- * isn't emailed.
- */
-export async function notify(benvolioId: string, actor: Role): Promise<void> {
-  const benvolio = await loadBenvolioForEmail(benvolioId);
-  if (!benvolio) return;
-  const role = partnerOf(actor);
+export type TurnEmail = {
+  personId: string;
+  /** Their partner's first name. */
+  partner: string;
+  notice: TurnNotice;
+  /** The sitting it's about, or null. */
+  sitting: number | null;
+  link: string;
+};
+
+/** What to email this person in a Benvolio (see turnNotice), and where: or null. */
+export function turnEmail(benvolio: BenvolioForEmail, role: Role): TurnEmail | null {
   const notice = turnNotice(benvolio.conversation, role);
   const person = benvolio.people.find((p) => p.role === role);
-  const other = benvolio.people.find((p) => p.role === actor);
-  if (!notice || !person?.person_id || !other) return;
-  const link = `${siteUrl()}/b/${benvolioId}`;
-  const partner = other.first_name;
-  const sitting = notice.kind === "your_turn" ? notice.sitting : null;
+  const partner = benvolio.people.find((p) => p.role === partnerOf(role));
+  if (!notice || !person?.person_id || !partner) return null;
+  return {
+    personId: person.person_id,
+    partner: partner.first_name,
+    notice,
+    sitting: notice.kind === "your_turn" ? notice.sitting : null,
+    link: benvolioUrl(benvolio.id),
+  };
+}
+
+/**
+ * Emails whoever has something new to do in a Benvolio after `actor` changed
+ * it. The actor is on the page already, so isn't emailed.
+ */
+export async function notify(benvolioId: string, actor: Role): Promise<void> {
+  const [benvolio] = await loadBenvoliosForEmail([benvolioId]);
+  const role = partnerOf(actor);
+  const email = benvolio && turnEmail(benvolio, role);
+  if (!email) return;
+  const { notice, partner, link, sitting } = email;
   const message =
     notice.kind === "your_turn"
       ? yourTurnEmail({ partner, link, ...notice })
       : (notice.kind === "finished" ? finishedEmail : questionProposedEmail)({ partner, link });
-  await sendOnce({ benvolioId, role, kind: notice.kind, sitting, reminderNumber: null }, person.person_id, message);
+  await sendOnce({ benvolioId, role, kind: notice.kind, sitting, reminderNumber: null }, email.personId, message);
 }
 
 /**

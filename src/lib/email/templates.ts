@@ -86,15 +86,56 @@ export function yourTurnEmail({ partner, sitting, link, why }: Turn & { why: Tur
   return layout({ ...YOUR_TURN[why](partner, sitting), link, partner });
 }
 
+const CHOOSE_WORDING = "Choose which wording to use, and you can both begin.";
+
 /** The recipient joined and suggested new wording, which the initiator decides on. */
 export function questionProposedEmail({ partner, link }: Omit<Turn, "sitting">): Message {
   return layout({
     subject: `${partner} suggested new wording`,
     paragraphs: [
       `${partner} has joined your ${PRODUCT_NAME} and suggested new wording for the question.`,
-      "Choose which wording to use, and you can both begin. If you've written your opening, using the new wording means writing it again.",
+      `${CHOOSE_WORDING} If you've written your opening, using the new wording means writing it again.`,
     ],
     action: "Choose",
+    link,
+    partner,
+  });
+}
+
+/** A gentle nudge after quiet days: it's still their turn, or the wording still waits on them. */
+export function reminderEmail({
+  partner,
+  link,
+  sitting,
+  last,
+}: Omit<Turn, "sitting"> & {
+  /** The sitting it's their turn for, or null when new wording waits on them. */
+  sitting: number | null;
+  /** The last reminder about this: say so. */
+  last: boolean;
+}): Message {
+  const ending = last ? ["This is the last reminder we'll send about it."] : [];
+  if (sitting === null) {
+    return layout({
+      subject: `${partner} is waiting on the question's wording`,
+      paragraphs: [
+        `${partner} suggested new wording for your ${PRODUCT_NAME}'s question.`,
+        CHOOSE_WORDING,
+        ...ending,
+      ],
+      action: "Choose",
+      link,
+      partner,
+    });
+  }
+  return layout({
+    subject: `It's still your turn with ${partner}`,
+    paragraphs: [
+      `A gentle reminder: it's your turn to write ${sittingName(sitting)} in your ${PRODUCT_NAME} with ${partner}.`,
+      "There's no rush. It's waiting for you whenever you have a quiet moment.",
+      ...ending,
+    ],
+    action: "Continue",
     link,
     partner,
   });

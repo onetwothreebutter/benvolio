@@ -19,8 +19,11 @@ const after = vi.hoisted(() => vi.fn());
 vi.mock("next/server", () => ({ after }));
 const captureException = vi.hoisted(() => vi.fn());
 vi.mock("@sentry/nextjs", () => ({ captureException }));
-const loadBenvolioForEmail = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/db/load-benvolio", () => ({ loadBenvolioForEmail }));
+const loadBenvoliosForEmail = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/db/load-benvolio", () => ({ loadBenvoliosForEmail }));
+/** What loadBenvoliosForEmail returns for B, with these people and this conversation. */
+const loads = (people: unknown[], conversation: unknown) =>
+  loadBenvoliosForEmail.mockResolvedValue([{ id: B, pace: "daily", activeAt: "", people, conversation }]);
 
 const { notify, notifyLater, sendOnce } = await import("./notify");
 
@@ -114,9 +117,9 @@ describe("notify", () => {
   })();
 
   it("emails the partner when it's their turn, linking to the Benvolio", async () => {
-    loadBenvolioForEmail.mockResolvedValue({ people, conversation: opened });
+    loads(people, opened);
     await notify(B, "initiator");
-    expect(loadBenvolioForEmail).toHaveBeenCalledWith(B);
+    expect(loadBenvoliosForEmail).toHaveBeenCalledWith([B]);
     expect(insert).toHaveBeenCalledWith({
       benvolio_id: B,
       role: "recipient",
@@ -132,38 +135,38 @@ describe("notify", () => {
 
   it("emails the partner, not the sender, when a sitting is revealed", async () => {
     const both = submit(opened, "recipient", 0, validSitting(0, "Rhonda"));
-    loadBenvolioForEmail.mockResolvedValue({ people, conversation: both });
+    loads(people, both);
     await notify(B, "recipient");
     expect(insert).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ role: "initiator", sitting: 1 }));
     expect(sendEmail.mock.calls[0][0].text).toContain("Rhonda has sent their part");
   });
 
   it("asks the initiator to decide on new wording", async () => {
-    loadBenvolioForEmail.mockResolvedValue({ people, conversation: join(startConversation("Dogs?"), "Cats?") });
+    loads(people, join(startConversation("Dogs?"), "Cats?"));
     await notify(B, "recipient");
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ role: "initiator", kind: "question_proposed", sitting: null }));
   });
 
   it("emails the partner when the conversation is finished", async () => {
-    loadBenvolioForEmail.mockResolvedValue({ people, conversation: finished });
+    loads(people, finished);
     await notify(B, "recipient");
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ role: "initiator", kind: "finished", sitting: null }));
     expect(sendEmail.mock.calls[0][0].subject).toBe("Your Benvolio with Rhonda is finished");
   });
 
   it("emails nobody while the partner waits, hasn't joined, or the Benvolio is gone", async () => {
-    loadBenvolioForEmail.mockResolvedValue({ people, conversation: opened });
+    loads(people, opened);
     await notify(B, "recipient"); // The initiator waits for the recipient's opening.
     const unjoined = [people[0], { ...people[1], person_id: null }];
-    loadBenvolioForEmail.mockResolvedValue({ people: unjoined, conversation: opened });
+    loads(unjoined, opened);
     await notify(B, "initiator");
-    loadBenvolioForEmail.mockResolvedValue(null);
+    loadBenvoliosForEmail.mockResolvedValue([]);
     await notify(B, "initiator");
     expect(insert).not.toHaveBeenCalled();
   });
 
   it("runs later, reporting failures to Sentry, and not at all while email is off", async () => {
-    loadBenvolioForEmail.mockRejectedValue(new Error("boom"));
+    loadBenvoliosForEmail.mockRejectedValue(new Error("boom"));
     notifyLater(B, "initiator");
     await after.mock.calls[0][0]();
     expect(captureException).toHaveBeenCalledWith(expect.objectContaining({ message: "boom" }));
