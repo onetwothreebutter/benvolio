@@ -15,6 +15,8 @@ import { MAX_FEELINGS_PER_ITEM } from "@/lib/conversation/feelings";
 import { ITEMS_PER_ROUND, type ResponseKind } from "@/lib/conversation/rounds";
 import { isBenvolioId } from "@/lib/db/benvolio-id";
 import { loadBenvolioToWrite } from "@/lib/db/load-benvolio";
+import { isDuplicate } from "@/lib/db/rpc-error";
+import { notifyLater } from "@/lib/email/notify";
 import { newInviteToken } from "@/lib/invites/token";
 import { siteUrl } from "@/lib/site-url";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -65,6 +67,7 @@ export async function decideQuestion(_state: DecideState, form: FormData): Promi
     revalidatePath(here);
     return { error: NOTHING_TO_DECIDE };
   }
+  notifyLater(id, "initiator");
   redirect(here);
 }
 
@@ -137,8 +140,9 @@ export async function submitSitting(_state: SitState, form: FormData): Promise<S
     .from("submissions")
     .insert({ benvolio_id: id, sitting, role: benvolio.role, body: checked.submission });
   // A duplicate means another tab sent this sitting first.
-  if (error?.code === "23505") redirect(here);
+  if (isDuplicate(error)) redirect(here);
   if (error) throw new Error(`Sending a sitting failed: ${error.message}`);
+  notifyLater(id, benvolio.role);
 
   const { respond, write } = parts;
   for (const [step, part] of [["respond", respond], ["write", write]] as const) {

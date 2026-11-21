@@ -1,5 +1,10 @@
 import { LAST_SITTING, type NextAction } from "./model";
 
+/** "your opening" (or "their opening"), else "sitting 3 of 6". */
+export function sittingName(sitting: number, whose: "your" | "their" = "your"): string {
+  return sitting === 0 ? `${whose} opening` : `sitting ${sitting + 1} of ${LAST_SITTING + 1}`;
+}
+
 /** The line on a Benvolio's page that tells this person what happens next. */
 export function statusLine(action: NextAction, partner: string): string {
   switch (action.kind) {
@@ -10,9 +15,7 @@ export function statusLine(action: NextAction, partner: string): string {
     case "wait_for_question":
       return `Waiting for ${partner} to agree to your wording.`;
     case "sit":
-      return action.sitting === 0
-        ? "Your turn: write your opening."
-        : `Your turn: sitting ${action.sitting + 1} of ${LAST_SITTING + 1}.`;
+      return `Your turn: ${action.sitting === 0 ? "write " : ""}${sittingName(action.sitting)}.`;
     case "wait":
       return `Waiting for ${partner} to write theirs.`;
     case "finished":

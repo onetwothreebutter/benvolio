@@ -14,6 +14,8 @@ vi.mock("@/lib/db/load-benvolio", () => ({ loadBenvolioToWrite }));
 const trackServer = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/analytics/server", () => ({ trackServer }));
 vi.mock("server-only", () => ({}));
+const notifyLater = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/email/notify", () => ({ notifyLater }));
 const redirect = vi.hoisted(() =>
   vi.fn((to: string) => {
     throw new Error(`redirect ${to}`);
@@ -77,6 +79,10 @@ describe("decideQuestion", () => {
         accept: accept === "yes",
       });
     }
+    expect(notifyLater.mock.calls).toEqual([
+      [ID, "initiator"],
+      [ID, "initiator"],
+    ]);
   });
 
   it("explains when there's nothing to decide", async () => {
@@ -87,6 +93,7 @@ describe("decideQuestion", () => {
     expect(await decideQuestion({}, formData({ benvolio_id: "nope", accept: "yes" }))).toEqual({
       error: expect.any(String),
     });
+    expect(notifyLater).not.toHaveBeenCalled();
     // Without a choice, nothing is thrown away.
     expect(await decideQuestion({}, formData({ benvolio_id: ID }))).toEqual({
       error: expect.any(String),
@@ -129,6 +136,7 @@ describe("submitSitting", () => {
       step: "write",
       sitting: 0,
     });
+    expect(notifyLater).toHaveBeenCalledExactlyOnceWith(ID, "initiator");
   });
 
   it("says what's missing and gives back what was typed", async () => {
@@ -191,6 +199,7 @@ describe("submitSitting", () => {
     insert.mockResolvedValue({ error: { code: "23505", message: "duplicate key" } });
     await expect(submitSitting({}, opening())).rejects.toThrow("redirect");
     expect(trackServer).not.toHaveBeenCalled();
+    expect(notifyLater).not.toHaveBeenCalled();
     insert.mockResolvedValue({ error: { code: "XX000", message: "boom" } });
     await expect(submitSitting({}, opening())).rejects.toThrow("boom");
   });

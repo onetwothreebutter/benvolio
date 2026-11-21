@@ -5,6 +5,7 @@ import { MAX_QUESTION_LENGTH, proposedWording, TurnError } from "@/lib/conversat
 import { withNext } from "@/lib/auth/safe-next";
 import { requirePerson } from "@/lib/auth/session";
 import { refusal } from "@/lib/db/rpc-error";
+import { notifyLater } from "@/lib/email/notify";
 import { findInvite } from "@/lib/invites/lookup";
 import { INVITE_GONE, OWN_INVITE } from "@/lib/invites/messages";
 import { hashInviteToken, isInviteToken } from "@/lib/invites/token";
@@ -41,5 +42,6 @@ export async function joinBenvolio(_state: JoinState, form: FormData): Promise<J
       redirect(withNext("/welcome", `/join/${token}`));
   }
   if (error) throw new Error(`Joining a Benvolio failed: ${error.message}`);
+  notifyLater(data as string, "recipient");
   redirect(`/b/${data as string}`);
 }
