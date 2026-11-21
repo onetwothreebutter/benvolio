@@ -8,6 +8,8 @@ vi.mock("@/lib/auth/session", () => ({ requirePerson }));
 const findInvite = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/invites/lookup", () => ({ findInvite }));
 vi.mock("server-only", () => ({}));
+const notifyLater = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/email/notify", () => ({ notifyLater }));
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => {
     throw new Error(`redirect ${url}`);
@@ -44,6 +46,7 @@ describe("joinBenvolio", () => {
       recipient: "rhonda",
       proposed_question: null,
     });
+    expect(notifyLater).toHaveBeenCalledExactlyOnceWith("b1", "recipient");
   });
 
   it("passes new wording on for the initiator to decide", async () => {
@@ -54,6 +57,7 @@ describe("joinBenvolio", () => {
   });
 
   it("explains a used or expired invite", async () => {
+    expect(notifyLater).not.toHaveBeenCalled();
     findInvite.mockResolvedValue(null);
     expect(await joinBenvolio({}, formData({ token: TOKEN }))).toEqual({
       error: expect.stringContaining("expired"),
