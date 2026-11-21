@@ -138,6 +138,13 @@
   gap: 0.5rem;
 }
 
+/* Whose words follow, on a line of its own. */
+.who {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
 /* Read out by screen readers, not shown. */
 .visuallyHidden {
   position: absolute;

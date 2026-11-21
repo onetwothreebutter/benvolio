@@ -166,7 +166,10 @@ export function latestExchange(c: Conversation, author: Role): (Exchange & { rou
 }
 
 /** Every round both people have responded to, from the viewer's side and the partner's. */
-export function sharedRounds(c: Conversation, viewer: Role) {
+export function sharedRounds(
+  c: Conversation,
+  viewer: Role,
+): { round: number; yours: Exchange; theirs: Exchange }[] {
   return ROUNDS.flatMap((_, i) => {
     const round = i + 1;
     const yours = exchange(c, round, viewer);

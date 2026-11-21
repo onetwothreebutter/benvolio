@@ -34,8 +34,8 @@ describe("RoundsPage", () => {
     expect(screen.getByRole("region", { name: "Where you each stand" })).toHaveTextContent(
       "You wrote: initiator stanceRhonda wrote: recipient stance",
     );
-    expect(screen.getByText("Each round appears here once you've both responded to it.")).toBeVisible();
-    // Rhonda has responded to Jane's reasons, but Jane hasn't written hers yet.
+    expect(screen.getByText(/^Each round will appear here/)).toBeVisible();
+    // Rhonda has rephrased your reasons, but you haven't rephrased Rhonda's yet.
     expect(screen.queryByText("recipient rephrase 1", { exact: false })).toBeNull();
   });
 
@@ -64,6 +64,6 @@ describe("RoundsPage", () => {
   it("says so before the openings are revealed", async () => {
     await show(join(startConversation("Should we get a dog?")));
     expect(screen.queryByRole("region", { name: "Where you each stand" })).toBeNull();
-    expect(screen.getByText("Each round appears here once you've both responded to it.")).toBeVisible();
+    expect(screen.getByText(/^Your stances and each round will appear here/)).toBeVisible();
   });
 });

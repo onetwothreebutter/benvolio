@@ -51,11 +51,11 @@ export function ExchangeList({
   );
 }
 
-/** Something a person wrote, styled and labelled by whose it is. */
-export function Words({ who, text }: { who: Who; text: string }) {
+/** Something a person wrote, styled and labelled by whose it is; the label shows if `labelled`. */
+export function Words({ who, text, labelled = false }: { who: Who; text: string; labelled?: boolean }) {
   return (
     <p className={who.you ? styles.mine : styles.quote}>
-      <span className={styles.visuallyHidden}>{nameOf(who)} wrote: </span>
+      <span className={labelled ? styles.who : styles.visuallyHidden}>{nameOf(who)} wrote: </span>
       {text}
     </p>
   );

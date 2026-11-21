@@ -46,7 +46,7 @@ export default async function BenvolioPage({ params }: { params: Promise<{ id: s
             responder={{ you: false, name: partnerName }}
           />
           <Link href={`${here}/rounds`} className={styles.link}>
-            See every round so far
+            See every round
           </Link>
         </div>
       )}
