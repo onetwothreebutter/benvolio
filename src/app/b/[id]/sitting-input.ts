@@ -24,6 +24,6 @@ export function sittingInput(sitting: number, form: FormData): SittingInput {
 }
 
 /** A field's text, with the CRLF line breaks browsers send counted as one character, as typed. */
-function text(value: FormDataEntryValue | null): string {
-  return String(value ?? "").replace(/\r\n/g, "\n");
+export function text(value: FormDataEntryValue | null): string {
+  return String(value ?? "").replace(/\r\n?/g, "\n");
 }

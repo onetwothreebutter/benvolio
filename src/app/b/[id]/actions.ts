@@ -17,7 +17,7 @@ import { loadBenvolioToWrite } from "@/lib/db/load-benvolio";
 import { newInviteToken } from "@/lib/invites/token";
 import { siteUrl } from "@/lib/site-url";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { FIELD, sittingInput, type SittingInput } from "./sitting-input";
+import { FIELD, sittingInput, text, type SittingInput } from "./sitting-input";
 
 const NOT_RENEWABLE = "There's no invite to renew: they may have joined already.";
 
@@ -101,7 +101,7 @@ export async function submitSitting(_state: SitState, form: FormData): Promise<S
   // (new wording suggested or accepted meanwhile), give it back, not lose it.
   const { question } = benvolio.conversation;
   const opening = sittingParts(sitting).stance;
-  if (opening && form.get(FIELD.question) !== question.text) {
+  if (opening && text(form.get(FIELD.question)) !== text(question.text)) {
     return {
       error: `The question is now “${question.text}”. Check your opening still answers it, then send it.`,
       input,
@@ -139,3 +139,4 @@ export async function submitSitting(_state: SitState, form: FormData): Promise<S
   }
   redirect(here);
 }
+
