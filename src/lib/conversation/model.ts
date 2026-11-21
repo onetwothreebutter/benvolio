@@ -18,7 +18,7 @@ import { ITEMS_PER_ROUND, ROUNDS, type ResponseKind, type Round } from "./rounds
  * as it now stands.
  */
 
-const ROLES = ["initiator", "recipient"] as const;
+export const ROLES = ["initiator", "recipient"] as const;
 export type Role = (typeof ROLES)[number];
 
 export const LAST_SITTING = ROUNDS.length;
@@ -100,6 +100,11 @@ export function currentSitting(c: Conversation, role: Role): number {
   let sitting = 0;
   while (sitting < SITTINGS && hasSubmitted(c, sitting, role)) sitting++;
   return sitting;
+}
+
+/** The round this person is on: the one their next sitting writes, or the last once all are written. */
+export function currentRound(c: Conversation, role: Role): number {
+  return Math.min(currentSitting(c, role) + 1, ROUNDS.length);
 }
 
 export function isFinished(c: Conversation): boolean {

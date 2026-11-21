@@ -42,6 +42,8 @@ nothing needs resetting between runs.
 - `conversation.spec.ts`: rewording the question (used or kept), then a whole
   Benvolio, both people, all six sittings to the finish, checking what each
   person's page says at every turn.
+- `delete.spec.ts`: either person deleting (after backing out once), the
+  invite dying with it, and a sitting sent after the partner deleted it.
 - `dead-ends.spec.ts`: 404s, signed-out redirects, broken links, unsafe `next`.
 
 Not covered, as each needs a fault or timing the tests can't arrange: the

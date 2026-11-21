@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   checkSubmission,
+  currentRound,
   currentSitting,
   decideQuestion,
   inviteView,
@@ -171,6 +172,14 @@ describe("taking turns", () => {
     expect(currentSitting(c, "initiator")).toBe(6);
     expect(nextAction(c, "initiator")).toEqual({ kind: "finished" });
     expect(nextAction(c, "recipient")).toEqual({ kind: "finished" });
+  });
+
+  it("counts the round each person is on, staying on the last once written", () => {
+    const c = sit(join(started()), "initiator", 0);
+    expect(currentRound(c, "initiator")).toBe(2);
+    expect(currentRound(c, "recipient")).toBe(1);
+    expect(currentRound(bothThrough(join(started()), 3), "initiator")).toBe(5);
+    expect(currentRound(bothThrough(join(started()), 5), "initiator")).toBe(5);
   });
 
   it("does not change the conversation it was given", () => {

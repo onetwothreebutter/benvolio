@@ -13,6 +13,7 @@ import { getProfile, requireSignedIn } from "@/lib/auth/session";
 import { loadBenvolio } from "@/lib/db/load-benvolio";
 import styles from "../../form.module.css";
 import { DecideQuestion } from "./decide-question";
+import { DeleteBenvolio } from "./delete-benvolio";
 import { RenewInvite } from "./renew-invite";
 import { SittingForm, type Revealed } from "./sitting-form";
 
@@ -55,6 +56,13 @@ export default async function BenvolioPage({ params }: { params: Promise<{ id: s
           revealed={revealedFor(conversation, action.sitting, role)}
         />
       )}
+      <footer className={styles.footer}>
+        <DeleteBenvolio
+          benvolioId={id}
+          partnerName={partnerName}
+          partnerJoined={conversation.recipientJoined}
+        />
+      </footer>
     </main>
   );
 }

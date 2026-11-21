@@ -1,16 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { join, startConversation, submit, type Conversation } from "@/lib/conversation/model";
+import { join, LAST_SITTING, startConversation, submit, type Conversation } from "@/lib/conversation/model";
 import { formData } from "@/test/form-data";
 import { validSitting } from "@/test/sittings";
 
 const rpc = vi.hoisted(() => vi.fn());
 const insert = vi.hoisted(() => vi.fn());
-const from = vi.hoisted(() => vi.fn(() => ({ insert })));
+const deleted = vi.hoisted(() => vi.fn());
+const eq = vi.hoisted(() => vi.fn(() => ({ select: deleted })));
+const from = vi.hoisted(() => vi.fn(() => ({ insert, delete: () => ({ eq }) })));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc, from }) }));
 const requireSignedIn = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/auth/session", () => ({ requireSignedIn }));
+const loadBenvolio = vi.hoisted(() => vi.fn());
 const loadBenvolioToWrite = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/db/load-benvolio", () => ({ loadBenvolioToWrite }));
+vi.mock("@/lib/db/load-benvolio", () => ({ loadBenvolio, loadBenvolioToWrite }));
 const trackServer = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/analytics/server", () => ({ trackServer }));
 vi.mock("server-only", () => ({}));
@@ -22,7 +25,7 @@ const redirect = vi.hoisted(() =>
 vi.mock("next/navigation", () => ({ redirect }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
-const { decideQuestion, renewInvite, submitSitting } = await import("./actions");
+const { decideQuestion, deleteBenvolio, renewInvite, submitSitting } = await import("./actions");
 const { hashInviteToken } = await import("@/lib/invites/token");
 
 const ID = "00000000-0000-4000-8000-0000000000b1";
@@ -92,6 +95,79 @@ describe("decideQuestion", () => {
       error: expect.any(String),
     });
     expect(rpc).toHaveBeenCalledTimes(1);
+  });
+});
+
+/** Both people's sittings before `through`, so `through` is next for each. */
+function revealed(through: number): Conversation {
+  let c = join(startConversation("Should we get a dog?"));
+  for (let sitting = 0; sitting < through; sitting++) {
+    for (const role of ["initiator", "recipient"] as const) {
+      c = submit(c, role, sitting, validSitting(sitting, role));
+    }
+  }
+  return c;
+}
+
+describe("deleteBenvolio", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    requireSignedIn.mockResolvedValue({ userId: "rhonda", email: "r@example.com" });
+    deleted.mockResolvedValue({ data: [{ id: ID }], error: null });
+  });
+
+  const load = (conversation: Conversation | null) =>
+    loadBenvolio.mockResolvedValue(
+      conversation && { role: "recipient", partnerName: "Jane", conversation },
+    );
+  const del = () => deleteBenvolio(formData({ benvolio_id: ID }));
+  const deletedInRound = (round: number) =>
+    expect(trackServer).toHaveBeenLastCalledWith("rhonda", "benvolio_deleted", { benvolio_id: ID, round });
+
+  it("deletes it for both people, records the round, then goes home", async () => {
+    load(revealed(2));
+    await expect(del()).rejects.toThrow("redirect /");
+    expect(loadBenvolio).toHaveBeenCalledWith(ID, "rhonda");
+    expect(from).toHaveBeenCalledWith("benvolios");
+    expect(eq).toHaveBeenCalledWith("id", ID);
+    expect(trackServer).toHaveBeenCalledOnce();
+    deletedInRound(3); // Sitting 3 writes round 3.
+  });
+
+  it("records round 1 before anything's written, and round 5 once it's finished", async () => {
+    load(revealed(0));
+    await expect(del()).rejects.toThrow("redirect /");
+    deletedInRound(1);
+    load(revealed(LAST_SITTING + 1));
+    await expect(del()).rejects.toThrow("redirect /");
+    deletedInRound(5);
+  });
+
+  it("records the round both had reached", async () => {
+    load(submit(revealed(0), "recipient", 0, validSitting(0, "recipient")));
+    await expect(del()).rejects.toThrow("redirect /");
+    deletedInRound(1);
+  });
+
+  it("counts it once when the partner deleted it at the same moment", async () => {
+    load(revealed(0));
+    deleted.mockResolvedValue({ data: [], error: null });
+    await expect(del()).rejects.toThrow("redirect /");
+    expect(trackServer).not.toHaveBeenCalled();
+  });
+
+  it("only goes home when it's already gone or not theirs", async () => {
+    load(null);
+    await expect(del()).rejects.toThrow("redirect /");
+    expect(from).not.toHaveBeenCalled();
+    expect(trackServer).not.toHaveBeenCalled();
+  });
+
+  it("fails loudly if the database does", async () => {
+    load(revealed(0));
+    deleted.mockResolvedValue({ data: null, error: { message: "boom" } });
+    await expect(del()).rejects.toThrow("boom");
+    expect(trackServer).not.toHaveBeenCalled();
   });
 });
 
@@ -187,8 +263,11 @@ describe("submitSitting", () => {
     expect(insert).not.toHaveBeenCalled();
   });
 
-  it("treats a sitting another tab already sent as sent", async () => {
+  it("reloads when another tab already sent the sitting, or it was deleted", async () => {
     insert.mockResolvedValue({ error: { code: "23505", message: "duplicate key" } });
+    await expect(submitSitting({}, opening())).rejects.toThrow("redirect");
+    // Deleted between loading it and saving.
+    insert.mockResolvedValue({ error: { code: "23503", message: "foreign key" } });
     await expect(submitSitting({}, opening())).rejects.toThrow("redirect");
     expect(trackServer).not.toHaveBeenCalled();
     insert.mockResolvedValue({ error: { code: "XX000", message: "boom" } });
@@ -197,16 +276,6 @@ describe("submitSitting", () => {
 });
 
 describe("submitSitting, responding to a round", () => {
-  /** Both people's sittings before `through`, so `through` is next for each. */
-  function revealed(through: number): Conversation {
-    let c = join(startConversation("Should we get a dog?"));
-    for (let sitting = 0; sitting < through; sitting++) {
-      for (const role of ["initiator", "recipient"] as const) {
-        c = submit(c, role, sitting, validSitting(sitting, role));
-      }
-    }
-    return c;
-  }
   const sittingForm = (sitting: number, fields: Record<string, string | string[]>) =>
     formData({ benvolio_id: ID, sitting: String(sitting), ...fields });
 
