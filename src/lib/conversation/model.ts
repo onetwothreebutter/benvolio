@@ -67,7 +67,7 @@ export function partnerOf(role: Role): Role {
 }
 
 export const MAX_QUESTION_LENGTH = 300;
-const MAX_ITEM_LENGTH = 2000;
+export const MAX_ITEM_LENGTH = 2000;
 
 export function cleanQuestion(value: unknown): string {
   const text = cleanText(value, MAX_QUESTION_LENGTH);

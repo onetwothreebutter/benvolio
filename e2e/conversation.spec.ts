@@ -2,13 +2,14 @@ import type { Page } from "@playwright/test";
 import { LAST_SITTING, partnerOf, type NextAction, type Role } from "@/lib/conversation/model";
 import { statusLine } from "@/lib/conversation/status";
 import { joinFromInvite, newPerson, signIn, startBenvolio } from "./support/people";
-import { writeSitting } from "./support/sittings";
+import { formError } from "./support/screen";
+import { writeOpening, writeSitting } from "./support/sittings";
 import { expect, test } from "./support/test";
 
 /**
  * A whole Benvolio, from the invite to the finish, checking what each person's
- * page tells them at every turn. The writing itself goes straight into the
- * database (see support/sittings.ts) until the writing screens exist.
+ * page tells them at every turn. Openings are typed; later sittings go
+ * straight into the database (see support/sittings.ts) until their screens exist.
  */
 test("two people take turns through a whole Benvolio", async ({ page, anotherPhone }, testInfo) => {
   test.setTimeout(180_000);
@@ -16,7 +17,8 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
   const started = await startBenvolio(page, newPerson("Rhonda", testInfo), "Should we get a dog?");
 
   // Jane writes her opening before Rhonda suggests new wording.
-  await writeSitting(started.id, "initiator", 0);
+  await writeOpening(page, started.id, "initiator");
+  await expect(page.getByText(statusLine({ kind: "wait", sitting: 0 }, "Rhonda"))).toBeVisible();
   const rhondasPhone = await anotherPhone();
   await joinFromInvite(
     rhondasPhone,
@@ -26,8 +28,14 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
   );
   await expect(rhondasPhone).toHaveURL(`/b/${started.id}`);
 
-  const phones: Record<Role, Page> = { initiator: page, recipient: rhondasPhone };
-  const partnerName: Record<Role, string> = { initiator: "Rhonda", recipient: "Jane" };
+  const phones: Record<Role, Page> = {
+    initiator: page,
+    recipient: rhondasPhone,
+  };
+  const partnerName: Record<Role, string> = {
+    initiator: "Rhonda",
+    recipient: "Jane",
+  };
   /** Opens each person's page and checks it says what should happen next. */
   async function expectNext(actions: Partial<Record<Role, NextAction>>) {
     await Promise.all(
@@ -39,11 +47,17 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
       }),
     );
   }
-  const both = (action: NextAction) => ({ initiator: action, recipient: action });
+  const both = (action: NextAction) => ({
+    initiator: action,
+    recipient: action,
+  });
 
   // The question is settled before anyone writes.
   await expectNext({
-    initiator: { kind: "decide_question", proposed: "Should we get a dog this year?" },
+    initiator: {
+      kind: "decide_question",
+      proposed: "Should we get a dog this year?",
+    },
     recipient: { kind: "wait_for_question" },
   });
   // Accepting it reopens Jane's opening, so her stance answers the new wording.
@@ -53,7 +67,9 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
   await expect(page.getByRole("heading", { name: "Should we get a dog this year?" })).toBeVisible();
   await expectNext(both({ kind: "sit", sitting: 0 }));
   for (const phone of Object.values(phones)) {
-    await expect(phone.getByRole("heading", { name: "Should we get a dog this year?" })).toBeVisible();
+    await expect(
+      phone.getByRole("heading", { name: "Should we get a dog this year?" }),
+    ).toBeVisible();
   }
 
   for (let sitting = 0; sitting <= LAST_SITTING; sitting++) {
@@ -61,15 +77,21 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
     const first: Role = sitting % 2 === 0 ? "initiator" : "recipient";
     const second = partnerOf(first);
     await test.step(`sitting ${sitting + 1} of ${LAST_SITTING + 1}`, async () => {
-      await writeSitting(started.id, first, sitting);
+      const write = (role: Role) =>
+        sitting === 0
+          ? writeOpening(phones[role], started.id, role)
+          : writeSitting(started.id, role, sitting);
+      await write(first);
       await expectNext({
         [first]: { kind: "wait", sitting },
         [second]: { kind: "sit", sitting },
       });
 
-      await writeSitting(started.id, second, sitting);
+      await write(second);
       await expectNext(
-        both(sitting === LAST_SITTING ? { kind: "finished" } : { kind: "sit", sitting: sitting + 1 }),
+        both(
+          sitting === LAST_SITTING ? { kind: "finished" } : { kind: "sit", sitting: sitting + 1 },
+        ),
       );
     });
   }
@@ -79,7 +101,12 @@ test("the initiator can keep their own wording", async ({ page, anotherPhone }, 
   await signIn(page, newPerson("Jane", testInfo));
   const started = await startBenvolio(page, newPerson("Rhonda", testInfo), "Should we get a dog?");
   const rhondasPhone = await anotherPhone();
-  await joinFromInvite(rhondasPhone, started.inviteUrl, newPerson("Rhonda", testInfo), "A dog or a cat?");
+  await joinFromInvite(
+    rhondasPhone,
+    started.inviteUrl,
+    newPerson("Rhonda", testInfo),
+    "A dog or a cat?",
+  );
   await expect(rhondasPhone).toHaveURL(`/b/${started.id}`);
 
   // Jane hasn't written her opening, so there's nothing to rewrite.
@@ -93,4 +120,22 @@ test("the initiator can keep their own wording", async ({ page, anotherPhone }, 
   await rhondasPhone.reload();
   await expect(rhondasPhone.getByText(statusLine({ kind: "sit", sitting: 0 }, ""))).toBeVisible();
   await expect(rhondasPhone.getByRole("heading", { name: "Should we get a dog?" })).toBeVisible();
+});
+
+test("the opening explains a blank answer and keeps what was typed", async ({ page }, testInfo) => {
+  await signIn(page, newPerson("Jane", testInfo));
+  const started = await startBenvolio(page, newPerson("Rhonda", testInfo));
+  await page.goto(`/b/${started.id}`);
+  await expect(page.getByText("Rhonda won't see this until they've written theirs.")).toBeVisible();
+  // The browser lets spaces through; the server catches them.
+  await page.getByLabel("Where do you stand?").fill("   ");
+  for (let i = 1; i <= 3; i++) await page.getByLabel(`Reason ${i}`).fill(`Reason number ${i}`);
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(formError(page)).toHaveText("Please write where you stand.");
+  await expect(page.getByLabel("Reason 2")).toHaveValue("Reason number 2");
+
+  await page.getByLabel("Where do you stand?").fill("We should.");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText(statusLine({ kind: "wait", sitting: 0 }, "Rhonda"))).toBeVisible();
+  await expect(page.getByLabel("Where do you stand?")).toHaveCount(0);
 });
