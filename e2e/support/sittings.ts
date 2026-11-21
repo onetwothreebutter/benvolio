@@ -1,6 +1,5 @@
 import { expect, type Page } from "@playwright/test";
-import type { Role } from "@/lib/conversation/model";
-import { ROUNDS } from "@/lib/conversation/rounds";
+import { sittingParts, type Role } from "@/lib/conversation/model";
 import { validSitting } from "@/test/sittings";
 import { adminDatabase } from "./database";
 import { STANCE } from "./screen";
@@ -22,7 +21,7 @@ export async function writeOpening(page: Page, benvolioId: string, who: string) 
   const { stance, write } = validSitting(0, who);
   await page.goto(`/b/${benvolioId}`);
   await page.getByLabel(STANCE).fill(stance!);
-  const { itemLabel } = ROUNDS[0].write;
+  const { itemLabel } = sittingParts(0).write!;
   for (const [i, item] of write!.entries()) {
     await page.getByLabel(`${itemLabel} ${i + 1}`).fill(item);
   }

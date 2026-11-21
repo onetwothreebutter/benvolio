@@ -42,7 +42,7 @@ export default async function BenvolioPage({ params }: { params: Promise<{ id: s
       )}
       {/* Responding to a round comes in the next change. */}
       {action.kind === "sit" && action.sitting === 0 && (
-        <SittingForm benvolioId={id} sitting={0} partnerName={partnerName} />
+        <SittingForm benvolioId={id} sitting={action.sitting} partnerName={partnerName} />
       )}
     </main>
   );
