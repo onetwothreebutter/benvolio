@@ -4,26 +4,32 @@ import { localSupabase } from "./local-supabase";
 type Summary = { ID: string; Subject: string };
 
 /**
- * Waits for the next email to `to` whose subject contains `subject` in local
- * Supabase's Mailpit inbox, then clears those emails, so the following call
- * waits for a newer one. Other emails to `to` (sign-in codes, turn emails)
+ * Emails in local Supabase's Mailpit inbox to `to` whose subject contains
+ * `subject`, newest first. Mailpit matches subjects as substrings, ignoring
+ * case: "Your turn with Jane" also finds "It's still your turn with Jane".
+ */
+async function search(to: string, subject: string): Promise<Summary[]> {
+  if (`${to}${subject}`.includes('"')) throw new Error("Mailpit searches can't contain quotes");
+  const query = encodeURIComponent(`to:"${to}" subject:"${subject}"`);
+  const res = await fetch(`${localSupabase().mailpitUrl}/api/v1/search?query=${query}`);
+  return ((await res.json()) as { messages: Summary[] }).messages;
+}
+
+/**
+ * Waits for the newest email to `to` about `subject` (see search), then
+ * deletes every match, so the following call waits for a newer one: older
+ * sign-in emails carry codes the newest has replaced. Other emails to `to`
  * are left alone.
  */
-export async function takeEmail(to: string, subject: string): Promise<{ subject: string; html: string }> {
-  const mailpit = localSupabase().mailpitUrl;
-  const query = encodeURIComponent(`to:"${to}" subject:"${subject}"`);
+async function takeEmail(to: string, subject: string): Promise<{ subject: string; html: string }> {
   let messages: Summary[] = [];
   await expect
-    .poll(
-      async () => {
-        const res = await fetch(`${mailpit}/api/v1/search?query=${query}`);
-        ({ messages } = (await res.json()) as { messages: Summary[] });
-        return messages.length;
-      },
-      { message: `an email to ${to} about "${subject}"`, timeout: 15_000 },
-    )
+    .poll(async () => (messages = await search(to, subject)).length, {
+      message: `an email to ${to} about "${subject}"`,
+      timeout: 15_000,
+    })
     .toBeGreaterThan(0);
-  // Newest first. Older ones carry codes it has replaced, so they go too.
+  const mailpit = localSupabase().mailpitUrl;
   const message = (await (await fetch(`${mailpit}/api/v1/message/${messages[0].ID}`)).json()) as {
     Subject: string;
     HTML: string;
@@ -53,9 +59,7 @@ export async function takeBenvolioLink(to: string, subject: string): Promise<str
   return link;
 }
 
-/** Whether any email to `to` about `subject` is waiting, without taking it. */
+/** Whether any email to `to` about `subject` is waiting (see search), without taking it. */
 export async function hasEmail(to: string, subject: string): Promise<boolean> {
-  const query = encodeURIComponent(`to:"${to}" subject:"${subject}"`);
-  const res = await fetch(`${localSupabase().mailpitUrl}/api/v1/search?query=${query}`);
-  return ((await res.json()) as { messages: Summary[] }).messages.length > 0;
+  return (await search(to, subject)).length > 0;
 }

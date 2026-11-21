@@ -41,11 +41,14 @@ describe("sendEmail", () => {
     });
   });
 
-  it("can be pointed at a stand-in, for the end-to-end tests", async () => {
+  it("can be pointed at a stand-in on this machine, for the end-to-end tests, and nowhere else", async () => {
     vi.stubEnv("RESEND_API_URL", "http://localhost:3101");
     fetch.mockResolvedValue(new Response("{}", { status: 200 }));
     await sendEmail(email);
     expect(fetch.mock.calls[0][0]).toBe("http://localhost:3101/emails");
+    vi.stubEnv("RESEND_API_URL", "https://elsewhere.example");
+    await sendEmail(email);
+    expect(fetch.mock.calls[1][0]).toBe("https://api.resend.com/emails");
   });
 
   it("throws on a refusal, without Resend's message, which can quote the address", async () => {

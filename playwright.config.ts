@@ -35,7 +35,7 @@ export default defineConfig({
   projects: [{ name: "mobile-chromium" }],
   webServer: [
     {
-      command: `node e2e/support/fake-resend.ts ${FAKE_RESEND_PORT} ${supabase.mailpitUrl} ${RESEND_API_KEY}`,
+      command: `node --experimental-strip-types e2e/support/fake-resend.ts ${FAKE_RESEND_PORT} ${supabase.mailpitUrl} ${RESEND_API_KEY}`,
       url: `http://localhost:${FAKE_RESEND_PORT}`,
       reuseExistingServer: false,
     },
