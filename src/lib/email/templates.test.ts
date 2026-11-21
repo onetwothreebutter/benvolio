@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { finishedEmail, questionProposedEmail, yourTurnEmail } from "./templates";
+import { finishedEmail, questionProposedEmail, reminderEmail, yourTurnEmail } from "./templates";
 
 const link = "https://benvolio.test/b/00000000-0000-4000-8000-0000000000b1";
 
@@ -36,5 +36,17 @@ describe("email templates", () => {
     expect(email.html).not.toContain("<b>");
     expect(email.html).toContain("&#60;b&#62;&#34;Jo&#34; &#38; co&#60;/b&#62;");
     expect(email.text).toContain(`<b>"Jo" & co</b> has sent their last part`);
+  });
+});
+
+describe("reminders", () => {
+  it("nudge gently about a sitting or the wording, and say when it's the last", () => {
+    const turn = reminderEmail({ partner: "Jane", link, sitting: 3, last: false });
+    expect(turn.subject).toBe("It's still your turn with Jane");
+    expect(turn.text).toContain("it's your turn to write sitting 4 of 6 in your Benvolio with Jane.");
+    expect(turn.text).not.toContain("last reminder");
+    const wording = reminderEmail({ partner: "Rhonda", link, sitting: null, last: true });
+    expect(wording.subject).toBe("Rhonda is waiting on the question's wording");
+    expect(wording.text).toContain("This is the last reminder we'll send about it.");
   });
 });

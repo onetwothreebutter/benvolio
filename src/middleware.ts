@@ -31,6 +31,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Pages only: not static files, images, or the analytics proxy.
-  matcher: ["/((?!_next/static|_next/image|ingest/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
+  // Pages only: not static files, images, the analytics proxy or API routes.
+  matcher: ["/((?!_next/static|_next/image|ingest/|api/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
 };
