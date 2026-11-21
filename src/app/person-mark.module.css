@@ -1,0 +1,29 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0;
+  color: var(--muted);
+}
+
+.mark {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.initiator {
+  color: var(--ink-initiator);
+}
+
+.recipient {
+  color: var(--ink-recipient);
+}

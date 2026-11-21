@@ -47,7 +47,7 @@ export function InviteLink({ url, partnerName }: { url: string; partnerName: str
         Send {partnerName} this link. It works once and expires in 30 days. They won&apos;t see your
         answers until they&apos;ve written their own.
       </p>
-      <input ref={input} readOnly value={url} aria-label="Invite link" className={styles.input} />
+      <input ref={input} readOnly value={url} aria-label="Invite link" className={styles.copyField} />
       <button type="button" onClick={share} className={styles.button}>
         {canShare ? "Share the link" : copy === "copied" ? "Copied" : "Copy the link"}
       </button>

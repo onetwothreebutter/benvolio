@@ -11,9 +11,11 @@ export default async function Home() {
     ? await Promise.all([getProfile(signedIn.userId), myBenvolios()])
     : [null, []];
   return (
-    <main className={styles.main}>
-      <h1 className={styles.title}>{PRODUCT_NAME}</h1>
-      <p className={styles.tagline}>{TAGLINE}</p>
+    <main className={form.main}>
+      <hgroup className={styles.heading}>
+        <h1 className={styles.title}>{PRODUCT_NAME}</h1>
+        <p className={styles.tagline}>{TAGLINE}</p>
+      </hgroup>
       {!signedIn && <p className={styles.intro}>{DESCRIPTION}</p>}
       {signedIn ? (
         <div className={form.form}>
@@ -29,7 +31,7 @@ export default async function Home() {
           <Link href="/start" className={form.button}>
             Start a Benvolio
           </Link>
-          <form action="/auth/sign-out" method="post" className={form.form}>
+          <form action="/auth/sign-out" method="post" className={styles.signOut}>
             <p className={form.hint}>Signed in{profile ? ` as ${profile.firstName}` : ""}.</p>
             <button type="submit" className={form.link}>
               Sign out

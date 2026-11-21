@@ -57,12 +57,12 @@ export function StartForm() {
         className={styles.input}
       />
 
-      <fieldset className={styles.form}>
+      <fieldset className={styles.choices}>
         <legend className={styles.label}>How often should we nudge you both?</legend>
-        <label>
+        <label className={styles.choice}>
           <input type="radio" name="pace" value="daily" defaultChecked={pace === "daily"} /> Every day
         </label>
-        <label>
+        <label className={styles.choice}>
           <input type="radio" name="pace" value="weekly" defaultChecked={pace === "weekly"} /> Every week
         </label>
       </fieldset>

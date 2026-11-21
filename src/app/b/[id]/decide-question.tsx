@@ -18,7 +18,8 @@ export function DecideQuestion({
   return (
     <form action={action} aria-label="The new wording" className={styles.form}>
       <input type="hidden" name="benvolio_id" value={benvolioId} />
-      <blockquote className={styles.quote}>{proposed}</blockquote>
+      {/* Only the person invited can suggest new wording. */}
+      <blockquote className={`${styles.quote} ${styles.recipient}`}>{proposed}</blockquote>
       {openingWritten && (
         <p className={styles.hint}>
           If you use the new wording, you&apos;ll write your opening again so it answers it.
