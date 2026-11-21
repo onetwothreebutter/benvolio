@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 const ph = vi.hoisted(() => ({ capture: vi.fn(), flush: vi.fn(() => Promise.resolve()) }));
-vi.mock("posthog-node", () => ({ PostHog: vi.fn(() => ph) }));
+vi.mock("posthog-node", () => ({
+  PostHog: vi.fn(function () {
+    return ph;
+  }),
+}));
 const after = vi.hoisted(() => vi.fn());
 vi.mock("next/server", () => ({ after }));
 vi.mock("@sentry/nextjs", () => ({ captureMessage: vi.fn() }));
