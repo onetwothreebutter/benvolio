@@ -5,7 +5,10 @@ import { three } from "@/test/sittings";
 import { FinishedSummary } from "./finished-summary";
 
 const base: Summary = {
-  stances: { mine: "We should get a dog", partner: "Not yet" },
+  stances: [
+    { text: "We should get a dog", mine: true },
+    { text: "Not yet", mine: false },
+  ],
   agreed: [
     { text: "We both love walks", mine: true },
     { text: "The flat is small", mine: false },
@@ -47,6 +50,11 @@ describe("FinishedSummary", () => {
       ["Mine 1", "Mine 2", "Mine 3"],
     ]);
     expect(screen.getByRole("heading", { name: "All of Rhonda's, as you ranked them" })).toBeVisible();
+  });
+
+  it("leaves out compromises when no round ranked them", () => {
+    render(<FinishedSummary summary={{ ...base, compromises: undefined }} partnerName="Rhonda" />);
+    expect(screen.queryByRole("region", { name: "The compromises you each liked most" })).toBeNull();
   });
 
   it("says so when there was no agreement, and leaves out an empty list of differences", () => {

@@ -2,6 +2,7 @@ import { feelingLabel } from "@/lib/conversation/feelings";
 import type { Exchange, Response } from "@/lib/conversation/model";
 import { ITEMS_PER_ROUND, ROUNDS } from "@/lib/conversation/rounds";
 import styles from "../../form.module.css";
+import { ItemList, ResponsesSection } from "./responses-section";
 
 const andList = new Intl.ListFormat("en", { type: "conjunction" });
 const ORDINAL_SUFFIX: Partial<Record<Intl.LDMLPluralRule, string>> = { one: "st", two: "nd", few: "rd" };
@@ -16,14 +17,9 @@ export function PartnerResponses({
   exchange: Exchange & { round: number };
   partnerName: string;
 }) {
-  const id = `responses-${round}`;
   return (
-    <section aria-labelledby={id} className={styles.responses}>
-      <h2 id={id}>
-        {ROUNDS[round - 1].respond.seen(partnerName)}
-      </h2>
-      {/* Safari stops announcing a list once its bullets are styled away. */}
-      <ol role="list" className={styles.list}>
+    <ResponsesSection id={`responses-${round}`} title={ROUNDS[round - 1].respond.seen(partnerName)}>
+      <ItemList>
         {items.map((item, i) => (
           <li key={i}>
             <p className={styles.mine}>
@@ -33,8 +29,8 @@ export function PartnerResponses({
             <ResponseTo response={response} index={i} partnerName={partnerName} />
           </li>
         ))}
-      </ol>
-    </section>
+      </ItemList>
+    </ResponsesSection>
   );
 }
 

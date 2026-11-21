@@ -1,7 +1,7 @@
-import type { ReactNode } from "react";
 import type { Summary, SummaryItem } from "@/lib/conversation/model";
 import styles from "../../form.module.css";
 import { PrintButton } from "./print-button";
+import { ItemList, ResponsesSection } from "./responses-section";
 
 /** What both people keep once a Benvolio is finished: common ground first, then compromises. */
 export function FinishedSummary({ summary, partnerName }: { summary: Summary; partnerName: string }) {
@@ -9,72 +9,57 @@ export function FinishedSummary({ summary, partnerName }: { summary: Summary; pa
   const byWhom = (item: SummaryItem) => (item.mine ? "You wrote this" : `${partnerName} wrote this`);
   return (
     <>
-      <Section title="What you agree on">
+      <ResponsesSection id="summary-agreed" title="What you agree on">
         {agreed.length > 0 ? (
           <Items items={agreed} note={byWhom} />
         ) : (
           <p className={styles.hint}>Neither of you agreed with the other&apos;s points this time.</p>
         )}
-      </Section>
+      </ResponsesSection>
 
-      <Section title="The compromises you each liked most">
-        <ol role="list" className={styles.list}>
-          <li>
-            <p className={styles.quote}>{compromises.partner[0]}</p>
-            <p className={`${styles.hint} ${styles.reply}`}>Your first choice of {partnerName}&apos;s</p>
-          </li>
-          <li>
-            <p className={styles.quote}>{compromises.mine[0]}</p>
-            <p className={`${styles.hint} ${styles.reply}`}>{partnerName}&apos;s first choice of yours</p>
-          </li>
-        </ol>
-        <Ranked title={`All of ${partnerName}'s, as you ranked them`} items={compromises.partner} />
-        <Ranked title={`All of yours, as ${partnerName} ranked them`} items={compromises.mine} />
-      </Section>
-
-      {differ.length > 0 && (
-        <Section title="Still to talk about">
-          <p className={styles.hint}>Points one of you didn&apos;t agree with.</p>
-          <Items items={differ} note={byWhom} />
-        </Section>
+      {compromises && (
+        <ResponsesSection id="summary-compromises" title="The compromises you each liked most">
+          <Items
+            items={[
+              { text: compromises.partner[0], mine: false },
+              { text: compromises.mine[0], mine: true },
+            ]}
+            note={(item) =>
+              item.mine ? `${partnerName}'s first choice of yours` : `Your first choice of ${partnerName}'s`
+            }
+          />
+          <Ranked title={`All of ${partnerName}'s, as you ranked them`} items={compromises.partner} />
+          <Ranked title={`All of yours, as ${partnerName} ranked them`} items={compromises.mine} />
+        </ResponsesSection>
       )}
 
-      <Section title="Where you each started">
-        <Items
-          items={[
-            { text: stances.mine, mine: true },
-            { text: stances.partner, mine: false },
-          ]}
-          note={(item) => (item.mine ? "Your view" : `${partnerName}'s view`)}
-        />
-      </Section>
+      {differ.length > 0 && (
+        <ResponsesSection id="summary-differ" title="Still to talk about">
+          <p className={styles.hint}>Points one of you didn&apos;t agree with.</p>
+          <Items items={differ} note={byWhom} />
+        </ResponsesSection>
+      )}
+
+      <ResponsesSection id="summary-stances" title="Where you each started">
+        <Items items={stances} note={(item) => (item.mine ? "Your view" : `${partnerName}'s view`)} />
+      </ResponsesSection>
 
       <PrintButton />
     </>
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  const id = `summary-${title.replace(/\W+/g, "-").toLowerCase()}`;
-  return (
-    <section aria-labelledby={id} className={styles.responses}>
-      <h2 id={id}>{title}</h2>
-      {children}
-    </section>
-  );
-}
-
+/** Items quoted as written, each with a line saying whose it is or what became of it. */
 function Items({ items, note }: { items: SummaryItem[]; note: (item: SummaryItem) => string }) {
   return (
-    // Safari stops announcing a list once its bullets are styled away.
-    <ul role="list" className={styles.list}>
+    <ItemList>
       {items.map((item, i) => (
         <li key={i}>
           <p className={item.mine ? styles.mine : styles.quote}>{item.text}</p>
           <p className={`${styles.hint} ${styles.reply}`}>{note(item)}</p>
         </li>
       ))}
-    </ul>
+    </ItemList>
   );
 }
 

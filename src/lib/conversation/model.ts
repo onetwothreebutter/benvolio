@@ -170,48 +170,47 @@ export type SummaryItem = { text: string; mine: boolean };
 
 /** What both people keep once a Benvolio is finished, as one of them sees it. */
 export type Summary = {
-  stances: { mine: string; partner: string };
+  stances: SummaryItem[];
   /** Points of agreement the other person marked #agree, and those they didn't. */
   agreed: SummaryItem[];
   differ: SummaryItem[];
-  /** Each person's compromises, ordered by how their partner ranked them, best first. */
-  compromises: { mine: Items; partner: Items };
+  /** Each person's compromises, best ranked first: undefined if no round ranks them. */
+  compromises?: { mine: string[]; partner: string[] };
 };
 
-const roundOf = (kind: ResponseKind) => ROUNDS.findIndex((r) => r.respond.kind === kind) + 1;
-
-/** The finished Benvolio's summary for `viewer`, or undefined until it is finished. */
+/**
+ * The finished Benvolio's summary for `viewer`, or undefined until it is
+ * finished. It gathers whatever the rounds ask: agree marks split points into
+ * agreed and not, and ranks order items best first.
+ */
 export function summary(c: Conversation, viewer: Role): Summary | undefined {
   if (!isFinished(c)) return undefined;
-  const partner = partnerOf(viewer);
-  /** The author's items for the round with this kind of response, and that response. */
-  const responded = (kind: ResponseKind, author: Role) => {
-    const found = exchange(c, roundOf(kind), author);
-    if (found?.response.kind !== kind) throw new Error(`No ${kind} round in a finished Benvolio`);
-    return found;
+  const opening = visibleSubmissions(c, 0, viewer);
+  const result: Summary = {
+    stances: [
+      { text: opening.mine?.stance, mine: true },
+      { text: opening.partner?.stance, mine: false },
+    ].filter((s): s is SummaryItem => s.text !== undefined),
+    agreed: [],
+    differ: [],
   };
-
-  const agreed: SummaryItem[] = [];
-  const differ: SummaryItem[] = [];
-  for (const author of [viewer, partner]) {
-    const { items, response } = responded("agree", author);
-    if (response.kind !== "agree") continue;
-    items.forEach((text, i) => (response.agree[i] ? agreed : differ).push({ text, mine: author === viewer }));
+  const ranked: Partial<Record<Role, string[]>> = {};
+  for (let round = 1; round <= LAST_SITTING; round++) {
+    for (const author of [viewer, partnerOf(viewer)]) {
+      const found = exchange(c, round, author);
+      if (!found) continue;
+      const { items, response } = found;
+      const mine = author === viewer;
+      if (response.kind === "agree") {
+        items.forEach((text, i) => (response.agree[i] ? result.agreed : result.differ).push({ text, mine }));
+      } else if (response.kind === "rank") {
+        ranked[author] = [...items.keys()].sort((a, b) => response.ranks[a] - response.ranks[b]).map((i) => items[i]);
+      }
+    }
   }
-
-  const ranked = (author: Role) => {
-    const { items, response } = responded("rank", author);
-    if (response.kind !== "rank") return items;
-    const order = [...items.keys()].sort((a, b) => response.ranks[a] - response.ranks[b]);
-    return order.map((i) => items[i]) as Items;
-  };
-
-  return {
-    stances: { mine: c.submissions[0][viewer]!.stance!, partner: c.submissions[0][partner]!.stance! },
-    agreed,
-    differ,
-    compromises: { mine: ranked(viewer), partner: ranked(partner) },
-  };
+  const { [viewer]: mine, [partnerOf(viewer)]: partner } = ranked;
+  if (mine && partner) result.compromises = { mine, partner };
+  return result;
 }
 
 /** What the invite shows before the recipient joins: never the initiator's stance. */

@@ -67,13 +67,15 @@ test("two people take turns through a whole Benvolio", async ({ page, anotherPho
       const phone = phones[role];
       const agreed = phone.getByRole("region", { name: "What you agree on" });
       // The fixtures mark items 1 and 3 #agree and rank item 2 first.
+      const [accord, compromises] = [LAST_SITTING - 2, LAST_SITTING - 1];
       for (const author of [role, partnerOf(role)]) {
-        await expect(agreed.getByText(`${author} We both agree 1`)).toBeVisible();
-        await expect(agreed.getByText(`${author} We both agree 2`)).toHaveCount(0);
+        const points = validSitting(accord, author).write!;
+        await expect(agreed.getByText(points[0])).toBeVisible();
+        await expect(agreed.getByText(points[1])).toHaveCount(0);
       }
       const top = phone.getByRole("region", { name: "The compromises you each liked most" }).getByRole("listitem");
-      await expect(top.first()).toContainText(`${partnerOf(role)} Possible compromise 2`);
-      await expect(top.nth(1)).toContainText(`${role} Possible compromise 2`);
+      await expect(top.first()).toContainText(validSitting(compromises, partnerOf(role)).write![1]);
+      await expect(top.nth(1)).toContainText(validSitting(compromises, role).write![1]);
       await expect(phone.getByRole("region", { name: ROUNDS[LAST_SITTING - 1].respond.seen(partnerName[role]) })).toHaveCount(0);
     }
   }
