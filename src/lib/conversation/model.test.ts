@@ -12,6 +12,7 @@ import {
   nextAction,
   startConversation,
   submit,
+  summary,
   TurnError,
   parseSubmission,
   sittingParts,
@@ -223,6 +224,36 @@ describe("responses to your writing", () => {
 
   it("has nothing for the opening, which responds to nothing", () => {
     expect(exchange(bothThrough(join(started()), 0), 0, "initiator")).toBeUndefined();
+  });
+});
+
+describe("the finished summary", () => {
+  it("waits for the finish", () => {
+    expect(summary(bothThrough(join(started()), 4), "initiator")).toBeUndefined();
+  });
+
+  it("splits the points of agreement by whether the other person agreed, and orders compromises by rank", () => {
+    const c = bothThrough(join(started()), 5);
+    // Every fixture marks items 1 and 3 #agree, and ranks item 2 first, then 1, then 3.
+    expect(summary(c, "initiator")).toEqual({
+      stances: { mine: "initiator stance", partner: "recipient stance" },
+      agreed: [
+        { text: "initiator We both agree 1", mine: true },
+        { text: "initiator We both agree 3", mine: true },
+        { text: "recipient We both agree 1", mine: false },
+        { text: "recipient We both agree 3", mine: false },
+      ],
+      differ: [
+        { text: "initiator We both agree 2", mine: true },
+        { text: "recipient We both agree 2", mine: false },
+      ],
+      compromises: {
+        mine: ["initiator Possible compromise 2", "initiator Possible compromise 1", "initiator Possible compromise 3"],
+        partner: ["recipient Possible compromise 2", "recipient Possible compromise 1", "recipient Possible compromise 3"],
+      },
+    });
+    expect(summary(c, "recipient")?.stances).toEqual({ mine: "recipient stance", partner: "initiator stance" });
+    expect(summary(c, "recipient")?.agreed[0]).toEqual({ text: "recipient We both agree 1", mine: true });
   });
 });
 

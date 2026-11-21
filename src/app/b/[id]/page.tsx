@@ -4,6 +4,7 @@ import {
   hasSubmitted,
   latestExchange,
   nextAction,
+  summary,
   visibleSubmissions,
   type Conversation,
   type Role,
@@ -14,6 +15,7 @@ import { getProfile, requireSignedIn } from "@/lib/auth/session";
 import { loadBenvolio } from "@/lib/db/load-benvolio";
 import styles from "../../form.module.css";
 import { DecideQuestion } from "./decide-question";
+import { FinishedSummary } from "./finished-summary";
 import { PartnerResponses } from "./partner-responses";
 import { RenewInvite } from "./renew-invite";
 import { SittingForm, type Revealed } from "./sitting-form";
@@ -30,7 +32,9 @@ export default async function BenvolioPage({ params }: { params: Promise<{ id: s
   if (!benvolio) notFound();
   const { conversation, role, partnerName } = benvolio;
   const action = nextAction(conversation, role);
-  const responses = latestExchange(conversation, role);
+  const finished = summary(conversation, role);
+  // The summary covers the last round's responses, so it takes their place at the finish.
+  const responses = !finished && latestExchange(conversation, role);
   return (
     <main className={styles.main}>
       <p className={styles.hint}>With {partnerName}</p>
@@ -43,6 +47,7 @@ export default async function BenvolioPage({ params }: { params: Promise<{ id: s
       )}
       <p>{statusLine(action, partnerName)}</p>
       {responses && <PartnerResponses exchange={responses} partnerName={partnerName} />}
+      {finished && <FinishedSummary summary={finished} partnerName={partnerName} />}
       {action.kind === "decide_question" && (
         <DecideQuestion
           benvolioId={id}
