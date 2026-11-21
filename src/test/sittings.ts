@@ -1,4 +1,13 @@
-import { sittingParts, type Items, type Response, type Submission, type Tags } from "@/lib/conversation/model";
+import {
+  sittingParts,
+  submit,
+  type Conversation,
+  type Items,
+  type Response,
+  type Role,
+  type Submission,
+  type Tags,
+} from "@/lib/conversation/model";
 import type { ResponseKind } from "@/lib/conversation/rounds";
 
 /** Three numbered items, as every round writes. */
@@ -22,4 +31,15 @@ export function validSitting(sitting: number, who: string): Submission {
     submission.respond = responses[respond.kind];
   }
   return submission;
+}
+
+/** Submits this person's valid sitting. */
+export function sit(c: Conversation, role: Role, sitting: number): Conversation {
+  return submit(c, role, sitting, validSitting(sitting, role));
+}
+
+/** Both people through sittings 0 to `lastSitting`, the initiator first each time. */
+export function bothThrough(c: Conversation, lastSitting: number): Conversation {
+  for (let s = 0; s <= lastSitting; s++) c = sit(sit(c, "initiator", s), "recipient", s);
+  return c;
 }

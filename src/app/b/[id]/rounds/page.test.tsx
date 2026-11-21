@@ -1,22 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { join, startConversation, submit, type Conversation, type Role } from "@/lib/conversation/model";
-import { validSitting } from "@/test/sittings";
+import { join, startConversation, type Conversation } from "@/lib/conversation/model";
+import { bothThrough, sit } from "@/test/sittings";
 
 const loadBenvolioPage = vi.hoisted(() => vi.fn());
 vi.mock("../load-page", () => ({ loadBenvolioPage }));
 
 const { default: RoundsPage } = await import("./page");
 
-/** Both people through `last` sittings, then Rhonda (the recipient) through `rhondaAhead` more. */
+/** Both people through sitting `last`, then Rhonda (the recipient) through `rhondaAhead` more. */
 function conversation(last: number, rhondaAhead = 0): Conversation {
-  let c = join(startConversation("Should we get a dog?"));
-  const sit = (role: Role, s: number) => (c = submit(c, role, s, validSitting(s, role)));
-  for (let s = 0; s <= last; s++) {
-    sit("initiator", s);
-    sit("recipient", s);
-  }
-  for (let s = last + 1; s <= last + rhondaAhead; s++) sit("recipient", s);
+  let c = bothThrough(join(startConversation("Should we get a dog?")), last);
+  for (let s = last + 1; s <= last + rhondaAhead; s++) c = sit(c, "recipient", s);
   return c;
 }
 

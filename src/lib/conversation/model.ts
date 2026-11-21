@@ -165,6 +165,22 @@ export function latestExchange(c: Conversation, author: Role): (Exchange & { rou
   return undefined;
 }
 
+/** Every round both people have responded to, from the viewer's side and the partner's. */
+export function sharedRounds(c: Conversation, viewer: Role) {
+  return ROUNDS.flatMap((_, i) => {
+    const round = i + 1;
+    const yours = exchange(c, round, viewer);
+    const theirs = exchange(c, round, partnerOf(viewer));
+    return yours && theirs ? [{ round, yours, theirs }] : [];
+  });
+}
+
+/** Both people's stances, once their openings are revealed. */
+export function stances(c: Conversation, viewer: Role): { yours: string; theirs: string } | undefined {
+  const { mine, partner } = visibleSubmissions(c, 0, viewer);
+  return mine?.stance && partner?.stance ? { yours: mine.stance, theirs: partner.stance } : undefined;
+}
+
 /** What the invite shows before the recipient joins: never the initiator's stance. */
 export function inviteView(c: Conversation) {
   return { question: c.question.text };

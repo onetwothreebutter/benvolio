@@ -4,15 +4,20 @@ import { three, validSitting } from "@/test/sittings";
 import { ROUNDS } from "@/lib/conversation/rounds";
 import { ExchangeList } from "./exchange-list";
 
-/** The paragraphs of each listed item: one of yours, then the partner's response to it. */
-function rendered(round: number) {
-  const exchange = { items: three("Mine"), response: validSitting(round, "Rhonda").respond! };
+/**
+ * The paragraphs of each listed item for a round, with you as the author
+ * ("seen": your items, Rhonda's responses) or as the responder ("given").
+ */
+function rendered(round: number, direction: "seen" | "given" = "seen") {
+  const seen = direction === "seen";
+  const exchange = { items: three(seen ? "Mine" : "Theirs"), response: validSitting(round, seen ? "Rhonda" : "Me").respond! };
+  const rhonda = { you: false, name: "Rhonda" } as const;
   render(
     <ExchangeList
-      heading={ROUNDS[round - 1].respond.seen("Rhonda")}
+      heading={ROUNDS[round - 1].respond[direction]("Rhonda")}
       exchange={exchange}
-      author={{ you: true }}
-      responder={{ you: false, name: "Rhonda" }}
+      author={seen ? { you: true } : rhonda}
+      responder={seen ? rhonda : { you: true }}
     />,
   );
   return screen.getAllByRole("listitem").map((item) => within(item).getAllByRole("paragraph").map((p) => p.textContent));
@@ -62,21 +67,8 @@ describe("ExchangeList: your items, with your partner's responses", () => {
 });
 
 describe("ExchangeList: your partner's items, with your responses", () => {
-  function renderedYours(round: number) {
-    const exchange = { items: three("Theirs"), response: validSitting(round, "Me").respond! };
-    render(
-      <ExchangeList
-        heading={ROUNDS[round - 1].respond.given("Rhonda")}
-        exchange={exchange}
-        author={{ you: false, name: "Rhonda" }}
-        responder={{ you: true }}
-      />,
-    );
-    return screen.getAllByRole("listitem").map((item) => within(item).getAllByRole("paragraph").map((p) => p.textContent));
-  }
-
   it("speaks to you about your own responses", () => {
-    expect(renderedYours(4)).toEqual([
+    expect(rendered(4, "given")).toEqual([
       ["Rhonda wrote: Theirs 1", "You agree.", "It made you feel hopeful."],
       ["Rhonda wrote: Theirs 2", "You don't agree."],
       ["Rhonda wrote: Theirs 3", "You agree.", "It made you feel sad and relieved."],
@@ -85,10 +77,10 @@ describe("ExchangeList: your partner's items, with your responses", () => {
   });
 
   it("labels your answers as yours", () => {
-    expect(renderedYours(2)[0]).toEqual(["Rhonda wrote: Theirs 1", "You wrote: Me answer 1", "It made you feel hopeful."]);
+    expect(rendered(2, "given")[0]).toEqual(["Rhonda wrote: Theirs 1", "You wrote: Me answer 1", "It made you feel hopeful."]);
   });
 
   it("says when you picked no feeling", () => {
-    expect(renderedYours(3)[1]).toEqual(["Rhonda wrote: Theirs 2", "You didn't pick a feeling for this."]);
+    expect(rendered(3, "given")[1]).toEqual(["Rhonda wrote: Theirs 2", "You didn't pick a feeling for this."]);
   });
 });

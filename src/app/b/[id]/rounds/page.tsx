@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { exchange, LAST_SITTING, partnerOf, visibleSubmissions } from "@/lib/conversation/model";
+import { sharedRounds, stances } from "@/lib/conversation/model";
 import { ROUNDS } from "@/lib/conversation/rounds";
 import styles from "../../../form.module.css";
 import { ExchangeList, Words, type Who } from "../exchange-list";
@@ -15,13 +15,8 @@ export default async function RoundsPage({ params }: { params: Promise<{ id: str
   const { conversation, role, partnerName } = await loadBenvolioPage(id, `${home}/rounds`);
   const you: Who = { you: true };
   const partner: Who = { you: false, name: partnerName };
-  const opening = visibleSubmissions(conversation, 0, role);
-  const rounds = ROUNDS.flatMap((round, i) => {
-    const number = i + 1;
-    const yours = exchange(conversation, number, role);
-    const theirs = exchange(conversation, number, partnerOf(role));
-    return yours && theirs ? [{ number, round, yours, theirs }] : [];
-  });
+  const standing = stances(conversation, role);
+  const rounds = sharedRounds(conversation, role);
 
   return (
     <main className={styles.main}>
@@ -32,35 +27,38 @@ export default async function RoundsPage({ params }: { params: Promise<{ id: str
           Back to your Benvolio
         </Link>
       </p>
-      {opening.partner && (
+      {standing && (
         <section aria-labelledby="stances" className={styles.apart}>
           <h2 id="stances">Where you each stand</h2>
-          <Words who={you} text={opening.mine!.stance!} />
-          <Words who={partner} text={opening.partner.stance!} />
+          <Words who={you} text={standing.yours} />
+          <Words who={partner} text={standing.theirs} />
         </section>
       )}
       {rounds.length === 0 && <p>Each round appears here once you&apos;ve both responded to it.</p>}
-      {rounds.map(({ number, round, yours, theirs }) => (
-        <section key={number} aria-labelledby={`round-${number}`} className={styles.apart}>
-          <h2 id={`round-${number}`}>
-            Round {number} of {LAST_SITTING}: {round.title}
-          </h2>
-          <ExchangeList
-            level={3}
-            heading={round.respond.seen(partnerName)}
-            exchange={yours}
-            author={you}
-            responder={partner}
-          />
-          <ExchangeList
-            level={3}
-            heading={round.respond.given(partnerName)}
-            exchange={theirs}
-            author={partner}
-            responder={you}
-          />
-        </section>
-      ))}
+      {rounds.map(({ round, yours, theirs }) => {
+        const { title, respond } = ROUNDS[round - 1];
+        return (
+          <section key={round} aria-labelledby={`round-${round}`} className={styles.apart}>
+            <h2 id={`round-${round}`}>
+              Round {round} of {ROUNDS.length}: {title}
+            </h2>
+            <ExchangeList
+              level={3}
+              heading={respond.seen(partnerName)}
+              exchange={yours}
+              author={you}
+              responder={partner}
+            />
+            <ExchangeList
+              level={3}
+              heading={respond.given(partnerName)}
+              exchange={theirs}
+              author={partner}
+              responder={you}
+            />
+          </section>
+        );
+      })}
     </main>
   );
 }
