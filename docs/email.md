@@ -30,7 +30,9 @@ waits on email, and a failure goes to Sentry instead of the person.
   retry within 24 hours of a timeout.
 - **One "your turn" per sitting.** Whichever reason comes first is the one
   sent: after "ready to begin", the partner's opening sends nothing more.
-- **Off without `RESEND_API_KEY`**, as in local development and the E2E suite.
+- **Off without `RESEND_API_KEY`**, as in local development. The E2E suite
+  sets it and points `RESEND_API_URL` at a stand-in that delivers to Mailpit
+  (see `e2e/README.md`).
 
 ## Previewing
 

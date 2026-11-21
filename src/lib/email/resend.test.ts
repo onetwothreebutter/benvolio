@@ -41,6 +41,13 @@ describe("sendEmail", () => {
     });
   });
 
+  it("can be pointed at a stand-in, for the end-to-end tests", async () => {
+    vi.stubEnv("RESEND_API_URL", "http://localhost:3101");
+    fetch.mockResolvedValue(new Response("{}", { status: 200 }));
+    await sendEmail(email);
+    expect(fetch.mock.calls[0][0]).toBe("http://localhost:3101/emails");
+  });
+
   it("throws on a refusal, without Resend's message, which can quote the address", async () => {
     const body = JSON.stringify({ name: "validation_error", message: "Invalid `to`: rhonda@example.com" });
     fetch.mockResolvedValue(new Response(body, { status: 422 }));
