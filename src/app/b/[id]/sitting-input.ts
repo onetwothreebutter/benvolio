@@ -26,7 +26,10 @@ const READ: Record<ResponseField, (form: FormData, name: string) => unknown> = {
     const mark = form.get(name);
     return mark === "agree" ? true : mark === "disagree" ? false : undefined;
   },
-  ranks: (form, name) => Number(form.get(name)),
+  ranks: (form, name) => {
+    const rank = form.get(name);
+    return rank ? Number(rank) : undefined;
+  },
 };
 
 /**

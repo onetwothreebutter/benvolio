@@ -157,7 +157,7 @@ function Respond({
       />
     ),
     agree: () => (
-      <fieldset className={styles.choices}>
+      <fieldset className={styles.choices} aria-describedby={id}>
         <legend className={styles.hint}>Do you agree with {label}?</legend>
         {[
           ["agree", "Agree"],
@@ -178,9 +178,13 @@ function Respond({
     ),
     ranks: () => (
       <select
+        // React applies a select's defaultValue only when it mounts, so a new
+        // key brings back what was picked when the form comes back with an error.
+        key={String(typedValue("ranks"))}
         name={FIELD.respond("ranks", index)}
         required
         aria-label={`Your rank for ${label}`}
+        aria-describedby={id}
         defaultValue={String(typedValue("ranks") ?? "")}
         className={styles.input}
       >
