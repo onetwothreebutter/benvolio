@@ -190,7 +190,6 @@ function Respond({
         {Array.from({ length: ITEMS_PER_ROUND }, (_, r) => (
           <option key={r} value={r + 1}>
             {r + 1}
-            {r === 0 ? " (most liked)" : ""}
           </option>
         ))}
       </select>
