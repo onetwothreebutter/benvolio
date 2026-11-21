@@ -29,5 +29,12 @@ describe("SittingForm", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("using each number once");
     expect(ranks().map((select) => select.value)).toEqual(["1", "1", "3"]);
+
+    // Sending the same ranks again comes back the same way.
+    submitSitting.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await vi.waitFor(() => expect(submitSitting).toHaveBeenCalled());
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(ranks().map((select) => select.value)).toEqual(["1", "1", "3"]);
   });
 });

@@ -28,7 +28,7 @@ const READ: Record<ResponseField, (form: FormData, name: string) => unknown> = {
   },
   ranks: (form, name) => {
     const rank = form.get(name);
-    return rank ? Number(rank) : undefined;
+    return typeof rank === "string" && /^\d+$/.test(rank) ? Number(rank) : undefined;
   },
 };
 
