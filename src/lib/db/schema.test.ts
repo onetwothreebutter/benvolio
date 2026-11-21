@@ -15,6 +15,7 @@ import {
   type Conversation,
   type Role,
 } from "@/lib/conversation/model";
+import { validSitting } from "@/test/sittings";
 
 const root = join(__dirname, "../../../supabase");
 const migrations = readdirSync(join(root, "migrations"))
@@ -234,16 +235,6 @@ describe("constraints", () => {
 });
 
 describe("agreement with the turn-taking model", () => {
-  const items = ["a", "b", "c"];
-  const noTags = [[], [], []];
-  const sittingBody: Record<number, object> = {
-    0: { stance: "s", write: items },
-    1: { respond: { kind: "rephrase", texts: items }, write: items },
-    2: { respond: { kind: "answer", texts: items, tags: noTags }, write: items },
-    3: { respond: { kind: "react", tags: noTags }, write: items },
-    4: { respond: { kind: "agree", agree: [true, false, true], tags: noTags }, write: items },
-    5: { respond: { kind: "rank", ranks: [1, 2, 3] } },
-  };
   const person = { initiator: JANE, recipient: RHONDA };
 
   /** What the model says each person may see, as (sitting, role) pairs. */
@@ -265,10 +256,10 @@ describe("agreement with the turn-taking model", () => {
   }
 
   async function sit(c: Conversation, sitting: number, role: Role) {
-    const next = submitTurn(c, role, sitting, sittingBody[sitting]);
+    const next = submitTurn(c, role, sitting, validSitting(sitting, role));
     await asService(
       "insert into public.submissions (benvolio_id, sitting, role, body) values ($1, $2, $3, $4)",
-      [B, sitting, role, JSON.stringify(sittingBody[sitting])],
+      [B, sitting, role, JSON.stringify(validSitting(sitting, role))],
     );
     await expectSameView(next);
     return next;

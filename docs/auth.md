@@ -24,16 +24,11 @@ These live in the Supabase dashboard rather than in code.
   there is no allowlist to keep narrow.
 
 **Authentication > Emails > Templates**: use the same body for both
-"Confirm signup" (first sign-in) and "Magic Link" (every later one):
+"Confirm signup" (first sign-in) and "Magic Link" (every later one): paste
+[`supabase/templates/sign-in.html`](../supabase/templates/sign-in.html), which
+local Supabase and the end-to-end tests also use.
 
 Subject: `Your Benvolio code: {{ .Token }}`
-
-```html
-<p>Your Benvolio sign-in code is:</p>
-<p style="font-size:28px;font-weight:bold;letter-spacing:4px">{{ .Token }}</p>
-<p>Or <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}">sign in with this link</a>.</p>
-<p>If you didn't ask to sign in, you can ignore this email.</p>
-```
 
 The link opens a page with a Continue button rather than signing in on load,
 because email security scanners open links and would otherwise use up the

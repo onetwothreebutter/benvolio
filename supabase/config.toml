@@ -1,0 +1,53 @@
+# LOCAL ONLY: for `npx supabase start` and the end-to-end tests (e2e/README.md).
+# Never run `supabase config push` with this file: its site_url, rate limits
+# and email settings are for tests and would break the hosted project.
+# Production settings live in the Supabase dashboard (docs/auth.md).
+# Anything not set here is the Supabase CLI's default.
+
+project_id = "benvolio"
+
+[db.seed]
+# Each test makes its own data.
+enabled = false
+
+# Services the app doesn't use, off so `supabase start` is quicker.
+[realtime]
+enabled = false
+
+[studio]
+enabled = false
+
+[storage]
+enabled = false
+
+[edge_runtime]
+enabled = false
+
+[analytics]
+enabled = false
+
+[auth]
+# The end-to-end tests serve the app here (playwright.config.ts); emailed
+# sign-in links are built from it.
+site_url = "http://localhost:3100"
+
+[auth.rate_limit]
+# Raised so tests running in parallel from one address don't trip them.
+email_sent = 1000
+sign_in_sign_ups = 1000
+token_verifications = 1000
+
+[auth.email]
+enable_confirmations = true
+# How soon one address can be sent another email (60s in production).
+max_frequency = "1s"
+
+# The sign-in email, the same body as production's (docs/auth.md). "Confirm
+# signup" goes to new people, "Magic Link" to everyone else.
+[auth.email.template.confirmation]
+subject = "Your Benvolio code: {{ .Token }}"
+content_path = "./supabase/templates/sign-in.html"
+
+[auth.email.template.magic_link]
+subject = "Your Benvolio code: {{ .Token }}"
+content_path = "./supabase/templates/sign-in.html"
