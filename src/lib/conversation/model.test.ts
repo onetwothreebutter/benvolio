@@ -231,7 +231,9 @@ describe("the finished summary", () => {
   it("waits until both have sent the last sitting", () => {
     const c = bothThrough(join(started()), 4);
     expect(summary(c, "initiator")).toBeUndefined();
-    expect(summary(sit(c, "initiator", 5), "initiator")).toBeUndefined();
+    for (const viewer of ["initiator", "recipient"] as const) {
+      expect(summary(sit(c, "initiator", 5), viewer)).toBeUndefined();
+    }
   });
 
   it("orders each person's compromises by the rank the other gave them, best first", () => {

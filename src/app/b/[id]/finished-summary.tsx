@@ -6,12 +6,16 @@ import { ItemList, ResponsesSection } from "./responses-section";
 /** What both people keep once a Benvolio is finished: common ground first, then compromises. */
 export function FinishedSummary({ summary, partnerName }: { summary: Summary; partnerName: string }) {
   const { agreed, differ, compromises, stances } = summary;
-  const byWhom = (item: SummaryItem) => (item.mine ? "You wrote this" : `${partnerName} wrote this`);
+  /** Who wrote a point, and whether the other person agreed with it. */
+  const marked = (agreed: boolean) => (item: SummaryItem) =>
+    item.mine
+      ? `You wrote this. ${partnerName} ${agreed ? "agreed" : "didn't agree"}.`
+      : `${partnerName} wrote this. You ${agreed ? "agreed" : "didn't agree"}.`;
   return (
     <>
       <ResponsesSection id="summary-agreed" title="What you agree on">
         {agreed.length > 0 ? (
-          <Items items={agreed} note={byWhom} />
+          <Items items={agreed} note={marked(true)} />
         ) : (
           <p className={styles.hint}>Neither of you agreed with the other&apos;s points this time.</p>
         )}
@@ -36,12 +40,7 @@ export function FinishedSummary({ summary, partnerName }: { summary: Summary; pa
 
       {differ.length > 0 && (
         <ResponsesSection id="summary-differ" title="Still to talk about">
-          <Items
-            items={differ}
-            note={(item) =>
-              item.mine ? `You wrote this. ${partnerName} didn't agree.` : `${partnerName} wrote this. You didn't agree.`
-            }
-          />
+          <Items items={differ} note={marked(false)} />
         </ResponsesSection>
       )}
 

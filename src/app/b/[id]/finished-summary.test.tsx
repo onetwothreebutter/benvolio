@@ -13,7 +13,10 @@ const base: Summary = {
     { text: "We both love walks", mine: true },
     { text: "The flat is small", mine: false },
   ],
-  differ: [{ text: "A dog is a lot of work", mine: false }],
+  differ: [
+    { text: "Walks before work are fine", mine: true },
+    { text: "A dog is a lot of work", mine: false },
+  ],
   compromises: { mine: three("Mine"), partner: three("Hers") },
 };
 
@@ -29,10 +32,13 @@ describe("FinishedSummary", () => {
   it("leads with what both people agree on, saying who wrote each point", () => {
     render(<FinishedSummary summary={base} partnerName="Rhonda" />);
     expect(section("What you agree on")).toEqual([
-      ["We both love walks", "You wrote this"],
-      ["The flat is small", "Rhonda wrote this"],
+      ["We both love walks", "You wrote this. Rhonda agreed."],
+      ["The flat is small", "Rhonda wrote this. You agreed."],
     ]);
-    expect(section("Still to talk about")).toEqual([["A dog is a lot of work", "Rhonda wrote this. You didn't agree."]]);
+    expect(section("Still to talk about")).toEqual([
+      ["Walks before work are fine", "You wrote this. Rhonda didn't agree."],
+      ["A dog is a lot of work", "Rhonda wrote this. You didn't agree."],
+    ]);
     expect(section("Where you each started")).toEqual([
       ["We should get a dog", "Your view"],
       ["Not yet", "Rhonda's view"],
