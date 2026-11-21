@@ -32,7 +32,7 @@ describe("FinishedSummary", () => {
       ["We both love walks", "You wrote this"],
       ["The flat is small", "Rhonda wrote this"],
     ]);
-    expect(section("Still to talk about")).toEqual([["A dog is a lot of work", "Rhonda wrote this"]]);
+    expect(section("Still to talk about")).toEqual([["A dog is a lot of work", "Rhonda wrote this. You didn't agree."]]);
     expect(section("Where you each started")).toEqual([
       ["We should get a dog", "Your view"],
       ["Not yet", "Rhonda's view"],
@@ -41,11 +41,11 @@ describe("FinishedSummary", () => {
 
   it("puts each person's first-choice compromise first, then every compromise in ranked order", () => {
     render(<FinishedSummary summary={base} partnerName="Rhonda" />);
-    const lists = within(screen.getByRole("region", { name: "The compromises you each liked most" })).getAllByRole(
+    const lists = within(screen.getByRole("region", { name: "Compromises" })).getAllByRole(
       "list",
     );
     expect(lists.map((list) => within(list).getAllByRole("listitem").map((li) => li.textContent))).toEqual([
-      ["Hers 1Your first choice of Rhonda's", "Mine 1Rhonda's first choice of yours"],
+      ["Hers 1Rhonda's idea you liked most", "Mine 1Your idea Rhonda liked most"],
       ["Hers 1", "Hers 2", "Hers 3"],
       ["Mine 1", "Mine 2", "Mine 3"],
     ]);
@@ -54,7 +54,7 @@ describe("FinishedSummary", () => {
 
   it("leaves out compromises when no round ranked them", () => {
     render(<FinishedSummary summary={{ ...base, compromises: undefined }} partnerName="Rhonda" />);
-    expect(screen.queryByRole("region", { name: "The compromises you each liked most" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Compromises" })).toBeNull();
   });
 
   it("says so when there was no agreement, and leaves out an empty list of differences", () => {

@@ -18,14 +18,15 @@ export function FinishedSummary({ summary, partnerName }: { summary: Summary; pa
       </ResponsesSection>
 
       {compromises && (
-        <ResponsesSection id="summary-compromises" title="The compromises you each liked most">
+        <ResponsesSection id="summary-compromises" title="Compromises">
+          <h3>The ones you each liked most</h3>
           <Items
             items={[
               { text: compromises.partner[0], mine: false },
               { text: compromises.mine[0], mine: true },
             ]}
             note={(item) =>
-              item.mine ? `${partnerName}'s first choice of yours` : `Your first choice of ${partnerName}'s`
+              item.mine ? `Your idea ${partnerName} liked most` : `${partnerName}'s idea you liked most`
             }
           />
           <Ranked title={`All of ${partnerName}'s, as you ranked them`} items={compromises.partner} />
@@ -35,8 +36,12 @@ export function FinishedSummary({ summary, partnerName }: { summary: Summary; pa
 
       {differ.length > 0 && (
         <ResponsesSection id="summary-differ" title="Still to talk about">
-          <p className={styles.hint}>Points one of you didn&apos;t agree with.</p>
-          <Items items={differ} note={byWhom} />
+          <Items
+            items={differ}
+            note={(item) =>
+              item.mine ? `You wrote this. ${partnerName} didn't agree.` : `${partnerName} wrote this. You didn't agree.`
+            }
+          />
         </ResponsesSection>
       )}
 

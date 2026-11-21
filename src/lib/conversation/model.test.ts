@@ -228,8 +228,19 @@ describe("responses to your writing", () => {
 });
 
 describe("the finished summary", () => {
-  it("waits for the finish", () => {
-    expect(summary(bothThrough(join(started()), 4), "initiator")).toBeUndefined();
+  it("waits until both have sent the last sitting", () => {
+    const c = bothThrough(join(started()), 4);
+    expect(summary(c, "initiator")).toBeUndefined();
+    expect(summary(sit(c, "initiator", 5), "initiator")).toBeUndefined();
+  });
+
+  it("orders each person's compromises by the rank the other gave them, best first", () => {
+    const c = bothThrough(join(started()), 4);
+    // Ranks that aren't their own inverse, so reading a rank as an index would show.
+    const ranked = submit(sit(c, "initiator", 5), "recipient", 5, { respond: { kind: "rank", ranks: [3, 1, 2] } });
+    const [first, second, third] = validSitting(4, "initiator").write!;
+    expect(summary(ranked, "initiator")?.compromises?.mine).toEqual([second, third, first]);
+    expect(summary(ranked, "recipient")?.compromises?.partner).toEqual([second, third, first]);
   });
 
   it("splits the points of agreement by whether the other person agreed, and orders compromises by rank", () => {
@@ -259,10 +270,14 @@ describe("the finished summary", () => {
       ],
       compromises: { mine: byRank(compromises("initiator")), partner: byRank(compromises("recipient")) },
     });
+    // The other person sees the same summary from their side.
+    const flip = (items: { text?: string; mine: boolean }[]) => items.map((item) => ({ ...item, mine: !item.mine }));
+    const mine = summary(c, "initiator")!;
     const theirs = summary(c, "recipient")!;
-    expect(theirs.stances[0]).toEqual({ text: validSitting(0, "recipient").stance, mine: true });
-    expect(theirs.agreed[0]).toEqual({ text: accord("recipient")[0], mine: true });
-    expect(theirs.compromises?.mine).toEqual(byRank(compromises("recipient")));
+    expect(theirs.stances).toEqual(flip(mine.stances).reverse());
+    expect(theirs.agreed).toEqual([...flip(mine.agreed.slice(2)), ...flip(mine.agreed.slice(0, 2))]);
+    expect(theirs.differ).toEqual(flip(mine.differ).reverse());
+    expect(theirs.compromises).toEqual({ mine: mine.compromises!.partner, partner: mine.compromises!.mine });
   });
 });
 
