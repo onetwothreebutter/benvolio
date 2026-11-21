@@ -1,21 +1,43 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import styles from "./form.module.css";
+
+const noChanges = () => () => {};
+
+/**
+ * Whether this browser has a share sheet. False on the server and while the
+ * page hydrates, then the browser's answer, so the label never disagrees with
+ * what the button does.
+ */
+function useCanShare() {
+  return useSyncExternalStore(
+    noChanges,
+    () => "share" in navigator,
+    () => false,
+  );
+}
 
 /** An invite link to send, with the phone's share sheet where there is one. */
 export function InviteLink({ url, partnerName }: { url: string; partnerName: string }) {
-  const [copied, setCopied] = useState(false);
-  // Usually rendered in the browser, but the server renders it if the form was
-  // sent before JavaScript loaded, hence the guard and suppressHydrationWarning.
-  const canShare = typeof navigator !== "undefined" && "share" in navigator;
+  const canShare = useCanShare();
+  const [copy, setCopy] = useState<"copied" | "failed" | null>(null);
+  const input = useRef<HTMLInputElement>(null);
 
   async function share() {
     if (canShare) {
       await navigator.share({ title: "Benvolio", url }).catch(() => {});
-    } else {
+      return;
+    }
+    try {
       await navigator.clipboard.writeText(url);
-      setCopied(true);
+      setCopy("copied");
+    } catch {
+      // No clipboard access (an old browser, or permission refused): select
+      // the link so copying it by hand is one step.
+      setCopy("failed");
+      input.current?.focus();
+      input.current?.select();
     }
   }
 
@@ -25,10 +47,15 @@ export function InviteLink({ url, partnerName }: { url: string; partnerName: str
         Send {partnerName} this link. It works once and expires in 30 days. They won&apos;t see your
         answers until they&apos;ve written their own.
       </p>
-      <input readOnly value={url} aria-label="Invite link" className={styles.input} />
-      <button type="button" onClick={share} className={styles.button} suppressHydrationWarning>
-        {canShare ? "Share the link" : copied ? "Copied" : "Copy the link"}
+      <input ref={input} readOnly value={url} aria-label="Invite link" className={styles.input} />
+      <button type="button" onClick={share} className={styles.button}>
+        {canShare ? "Share the link" : copy === "copied" ? "Copied" : "Copy the link"}
       </button>
+      {copy === "failed" && (
+        <p role="alert" className={styles.error}>
+          We couldn&apos;t copy it. The link is selected above, so copy it from there.
+        </p>
+      )}
     </>
   );
 }
