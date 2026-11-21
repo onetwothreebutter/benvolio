@@ -102,6 +102,11 @@ export function currentSitting(c: Conversation, role: Role): number {
   return sitting;
 }
 
+/** The round this person is on: the one their next sitting writes, or the last once all are written. */
+export function currentRound(c: Conversation, role: Role): number {
+  return Math.min(currentSitting(c, role) + 1, ROUNDS.length);
+}
+
 export function isFinished(c: Conversation): boolean {
   return isRevealed(c, LAST_SITTING);
 }

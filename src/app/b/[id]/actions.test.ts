@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { join, startConversation, submit, type Conversation } from "@/lib/conversation/model";
+import { join, LAST_SITTING, startConversation, submit, type Conversation } from "@/lib/conversation/model";
 import { formData } from "@/test/form-data";
 import { validSitting } from "@/test/sittings";
 
@@ -97,6 +97,17 @@ describe("decideQuestion", () => {
   });
 });
 
+/** Both people's sittings before `through`, so `through` is next for each. */
+function revealed(through: number): Conversation {
+  let c = join(startConversation("Should we get a dog?"));
+  for (let sitting = 0; sitting < through; sitting++) {
+    for (const role of ["initiator", "recipient"] as const) {
+      c = submit(c, role, sitting, validSitting(sitting, role));
+    }
+  }
+  return c;
+}
+
 describe("deleteBenvolio", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -104,54 +115,44 @@ describe("deleteBenvolio", () => {
     eq.mockResolvedValue({ error: null });
   });
 
-  const joined = (): Conversation => join(startConversation("Should we get a dog?"));
+  const load = (conversation: Conversation | null) =>
+    loadBenvolio.mockResolvedValue(
+      conversation && { role: "recipient", partnerName: "Jane", conversation },
+    );
+  const del = () => deleteBenvolio(formData({ benvolio_id: ID }));
+  const deletedInRound = (round: number) =>
+    expect(trackServer).toHaveBeenLastCalledWith("rhonda", "benvolio_deleted", { benvolio_id: ID, round });
 
   it("deletes it for both people, records the round, then goes home", async () => {
-    let conversation = joined();
-    for (const sitting of [0, 1]) {
-      for (const role of ["initiator", "recipient"] as const) {
-        conversation = submit(conversation, role, sitting, validSitting(sitting, role));
-      }
-    }
-    loadBenvolio.mockResolvedValue({ role: "recipient", partnerName: "Jane", conversation });
-    await expect(deleteBenvolio(formData({ benvolio_id: ID }))).rejects.toThrow("redirect /");
+    load(revealed(2));
+    await expect(del()).rejects.toThrow("redirect /");
     expect(loadBenvolio).toHaveBeenCalledWith(ID, "rhonda");
     expect(from).toHaveBeenCalledWith("benvolios");
     expect(eq).toHaveBeenCalledWith("id", ID);
-    // Sitting 3 writes round 3.
-    expect(trackServer).toHaveBeenCalledExactlyOnceWith("rhonda", "benvolio_deleted", {
-      benvolio_id: ID,
-      round: 3,
-    });
+    expect(trackServer).toHaveBeenCalledOnce();
+    deletedInRound(3); // Sitting 3 writes round 3.
   });
 
   it("records round 1 before anything's written, and round 5 once it's finished", async () => {
-    loadBenvolio.mockResolvedValue({ role: "initiator", partnerName: "Rhonda", conversation: joined() });
-    await expect(deleteBenvolio(formData({ benvolio_id: ID }))).rejects.toThrow("redirect /");
-    expect(trackServer).toHaveBeenLastCalledWith("rhonda", "benvolio_deleted", { benvolio_id: ID, round: 1 });
-
-    let conversation = joined();
-    for (let sitting = 0; sitting <= 5; sitting++) {
-      for (const role of ["initiator", "recipient"] as const) {
-        conversation = submit(conversation, role, sitting, validSitting(sitting, role));
-      }
-    }
-    loadBenvolio.mockResolvedValue({ role: "initiator", partnerName: "Rhonda", conversation });
-    await expect(deleteBenvolio(formData({ benvolio_id: ID }))).rejects.toThrow("redirect /");
-    expect(trackServer).toHaveBeenLastCalledWith("rhonda", "benvolio_deleted", { benvolio_id: ID, round: 5 });
+    load(revealed(0));
+    await expect(del()).rejects.toThrow("redirect /");
+    deletedInRound(1);
+    load(revealed(LAST_SITTING + 1));
+    await expect(del()).rejects.toThrow("redirect /");
+    deletedInRound(5);
   });
 
   it("only goes home when it's already gone or not theirs", async () => {
-    loadBenvolio.mockResolvedValue(null);
-    await expect(deleteBenvolio(formData({ benvolio_id: ID }))).rejects.toThrow("redirect /");
+    load(null);
+    await expect(del()).rejects.toThrow("redirect /");
     expect(from).not.toHaveBeenCalled();
     expect(trackServer).not.toHaveBeenCalled();
   });
 
   it("fails loudly if the database does", async () => {
-    loadBenvolio.mockResolvedValue({ role: "initiator", partnerName: "Rhonda", conversation: joined() });
+    load(revealed(0));
     eq.mockResolvedValue({ error: { message: "boom" } });
-    await expect(deleteBenvolio(formData({ benvolio_id: ID }))).rejects.toThrow("boom");
+    await expect(del()).rejects.toThrow("boom");
     expect(trackServer).not.toHaveBeenCalled();
   });
 });
@@ -258,16 +259,6 @@ describe("submitSitting", () => {
 });
 
 describe("submitSitting, responding to a round", () => {
-  /** Both people's sittings before `through`, so `through` is next for each. */
-  function revealed(through: number): Conversation {
-    let c = join(startConversation("Should we get a dog?"));
-    for (let sitting = 0; sitting < through; sitting++) {
-      for (const role of ["initiator", "recipient"] as const) {
-        c = submit(c, role, sitting, validSitting(sitting, role));
-      }
-    }
-    return c;
-  }
   const sittingForm = (sitting: number, fields: Record<string, string | string[]>) =>
     formData({ benvolio_id: ID, sitting: String(sitting), ...fields });
 

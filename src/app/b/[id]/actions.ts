@@ -7,8 +7,7 @@ import type { RoundNumber } from "@/lib/analytics/events";
 import { requireSignedIn } from "@/lib/auth/session";
 import {
   checkSubmission,
-  currentSitting,
-  LAST_SITTING,
+  currentRound,
   MAX_ITEM_LENGTH,
   sittingParts,
   type ParseResult,
@@ -83,9 +82,8 @@ export async function deleteBenvolio(form: FormData): Promise<void> {
     // Everything else about it (people, writing, invite, emails) cascades.
     const { error } = await createAdminClient().from("benvolios").delete().eq("id", id);
     if (error) throw new Error(`Deleting a Benvolio failed: ${error.message}`);
-    // The round they were writing: their next sitting's, or the last.
-    const sitting = Math.min(currentSitting(benvolio.conversation, benvolio.role), LAST_SITTING - 1);
-    trackServer(userId, "benvolio_deleted", { benvolio_id: id, round: (sitting + 1) as RoundNumber });
+    const round = currentRound(benvolio.conversation, benvolio.role) as RoundNumber;
+    trackServer(userId, "benvolio_deleted", { benvolio_id: id, round });
   }
   redirect("/");
 }

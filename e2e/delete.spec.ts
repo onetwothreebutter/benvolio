@@ -1,3 +1,4 @@
+import { INVITE_GONE } from "@/lib/invites/messages";
 import { joinFromInvite, newPerson, signIn, startBenvolio } from "./support/people";
 import { NOT_FOUND } from "./support/screen";
 import { typeSitting } from "./support/sittings";
@@ -10,12 +11,10 @@ test("either person can delete a Benvolio, for both of them", async ({ page, ano
   await joinFromInvite(rhondasPhone, started.inviteUrl, newPerson("Rhonda", testInfo));
   await typeSitting(page, started.id, "initiator", 0);
 
-  // Rhonda changes her mind once, then deletes it.
+  // The partner who didn't start it can delete it too.
   await rhondasPhone.goto(`/b/${started.id}`);
   await rhondasPhone.getByRole("button", { name: "Delete this Benvolio" }).click();
   await expect(rhondasPhone.getByText("This deletes it for you and Jane")).toBeVisible();
-  await rhondasPhone.getByRole("button", { name: "Keep it" }).click();
-  await rhondasPhone.getByRole("button", { name: "Delete this Benvolio" }).click();
   await rhondasPhone.getByRole("button", { name: "Delete it" }).click();
   await expect(rhondasPhone).toHaveURL("/");
   await expect(rhondasPhone.getByRole("link", { name: started.question })).toHaveCount(0);
@@ -40,6 +39,5 @@ test("deleting before the partner joins stops the invite working", async ({ page
 
   const rhondasPhone = await anotherPhone();
   await rhondasPhone.goto(started.inviteUrl);
-  await expect(rhondasPhone.getByRole("button", { name: "Join" })).toHaveCount(0);
-  await expect(rhondasPhone.getByText("Ask the person who sent it for a new one.")).toBeVisible();
+  await expect(rhondasPhone.getByRole("heading", { name: INVITE_GONE })).toBeVisible();
 });
