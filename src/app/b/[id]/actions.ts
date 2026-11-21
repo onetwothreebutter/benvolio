@@ -110,7 +110,8 @@ export async function submitSitting(_state: SitState, form: FormData): Promise<S
   // An opening answers the question as its writer saw it. If that changed
   // (new wording suggested or accepted meanwhile), give it back, not lose it.
   const { question } = benvolio.conversation;
-  const opening = sittingParts(sitting).stance;
+  const parts = sittingParts(sitting);
+  const opening = parts.stance;
   if (opening && text(form.get(FIELD.question)) !== text(question.text)) {
     return {
       error: `The question is now “${question.text}”. Check your opening still answers it, then send it.`,
@@ -127,7 +128,7 @@ export async function submitSitting(_state: SitState, form: FormData): Promise<S
   const checked = checkSubmission(benvolio.conversation, benvolio.role, sitting, input);
   if (!checked.ok) {
     if ("notYourTurn" in checked) redirect(here);
-    const { respond } = sittingParts(sitting);
+    const { respond } = parts;
     const error =
       checked.invalid === "respond" && respond ? INVALID_RESPONSE[respond.kind] : INVALID[checked.invalid];
     return { error, input };
@@ -139,7 +140,7 @@ export async function submitSitting(_state: SitState, form: FormData): Promise<S
   if (error?.code === "23505") redirect(here);
   if (error) throw new Error(`Sending a sitting failed: ${error.message}`);
 
-  const { respond, write } = sittingParts(sitting);
+  const { respond, write } = parts;
   for (const [step, part] of [["respond", respond], ["write", write]] as const) {
     if (part) {
       trackServer(userId, "step_submitted", {

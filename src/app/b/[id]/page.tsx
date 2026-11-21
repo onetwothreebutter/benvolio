@@ -48,14 +48,14 @@ export default async function BenvolioPage({ params }: { params: Promise<{ id: s
         />
       )}
       {action.kind === "sit" && formReady(action.sitting) && (
-          <SittingForm
-            benvolioId={id}
-            sitting={action.sitting}
-            partnerName={partnerName}
-            question={conversation.question.text}
-            revealed={revealedFor(conversation, action.sitting, role)}
-          />
-        )}
+        <SittingForm
+          benvolioId={id}
+          sitting={action.sitting}
+          partnerName={partnerName}
+          question={conversation.question.text}
+          revealed={revealedFor(conversation, action.sitting, role)}
+        />
+      )}
     </main>
   );
 }
