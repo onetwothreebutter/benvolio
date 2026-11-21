@@ -53,6 +53,13 @@
   justify-self: start;
 }
 
+/* Set apart from the conversation above it. */
+.footer {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--muted);
+}
+
 .hint {
   color: var(--muted);
   margin: 0;

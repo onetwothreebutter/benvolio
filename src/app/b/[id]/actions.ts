@@ -7,6 +7,8 @@ import type { RoundNumber } from "@/lib/analytics/events";
 import { requireSignedIn } from "@/lib/auth/session";
 import {
   checkSubmission,
+  currentSitting,
+  LAST_SITTING,
   MAX_ITEM_LENGTH,
   sittingParts,
   type ParseResult,
@@ -14,7 +16,7 @@ import {
 import { MAX_FEELINGS_PER_ITEM } from "@/lib/conversation/feelings";
 import { ITEMS_PER_ROUND, type ResponseKind } from "@/lib/conversation/rounds";
 import { isBenvolioId } from "@/lib/db/benvolio-id";
-import { loadBenvolioToWrite } from "@/lib/db/load-benvolio";
+import { loadBenvolio, loadBenvolioToWrite } from "@/lib/db/load-benvolio";
 import { newInviteToken } from "@/lib/invites/token";
 import { siteUrl } from "@/lib/site-url";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -66,6 +68,26 @@ export async function decideQuestion(_state: DecideState, form: FormData): Promi
     return { error: NOTHING_TO_DECIDE };
   }
   redirect(here);
+}
+
+/**
+ * Deletes a Benvolio for both people, with everything either of them wrote,
+ * then goes home. Either person may. Already gone, or not theirs: just home.
+ */
+export async function deleteBenvolio(form: FormData): Promise<void> {
+  const id = String(form.get("benvolio_id") ?? "");
+  const { userId } = await requireSignedIn(`/b/${id}`);
+  // Read through row-level security, so this only finds Benvolios they're in.
+  const benvolio = await loadBenvolio(id, userId);
+  if (benvolio) {
+    // Everything else about it (people, writing, invite, emails) cascades.
+    const { error } = await createAdminClient().from("benvolios").delete().eq("id", id);
+    if (error) throw new Error(`Deleting a Benvolio failed: ${error.message}`);
+    // The round they were writing: their next sitting's, or the last.
+    const sitting = Math.min(currentSitting(benvolio.conversation, benvolio.role), LAST_SITTING - 1);
+    trackServer(userId, "benvolio_deleted", { benvolio_id: id, round: (sitting + 1) as RoundNumber });
+  }
+  redirect("/");
 }
 
 const CHECK_IT = "Please check what you wrote.";

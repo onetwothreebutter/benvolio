@@ -5,12 +5,14 @@ import { validSitting } from "@/test/sittings";
 
 const rpc = vi.hoisted(() => vi.fn());
 const insert = vi.hoisted(() => vi.fn());
-const from = vi.hoisted(() => vi.fn(() => ({ insert })));
+const eq = vi.hoisted(() => vi.fn());
+const from = vi.hoisted(() => vi.fn(() => ({ insert, delete: () => ({ eq }) })));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc, from }) }));
 const requireSignedIn = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/auth/session", () => ({ requireSignedIn }));
+const loadBenvolio = vi.hoisted(() => vi.fn());
 const loadBenvolioToWrite = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/db/load-benvolio", () => ({ loadBenvolioToWrite }));
+vi.mock("@/lib/db/load-benvolio", () => ({ loadBenvolio, loadBenvolioToWrite }));
 const trackServer = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/analytics/server", () => ({ trackServer }));
 vi.mock("server-only", () => ({}));
@@ -22,7 +24,7 @@ const redirect = vi.hoisted(() =>
 vi.mock("next/navigation", () => ({ redirect }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
-const { decideQuestion, renewInvite, submitSitting } = await import("./actions");
+const { decideQuestion, deleteBenvolio, renewInvite, submitSitting } = await import("./actions");
 const { hashInviteToken } = await import("@/lib/invites/token");
 
 const ID = "00000000-0000-4000-8000-0000000000b1";
@@ -92,6 +94,65 @@ describe("decideQuestion", () => {
       error: expect.any(String),
     });
     expect(rpc).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("deleteBenvolio", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    requireSignedIn.mockResolvedValue({ userId: "rhonda", email: "r@example.com" });
+    eq.mockResolvedValue({ error: null });
+  });
+
+  const joined = (): Conversation => join(startConversation("Should we get a dog?"));
+
+  it("deletes it for both people, records the round, then goes home", async () => {
+    let conversation = joined();
+    for (const sitting of [0, 1]) {
+      for (const role of ["initiator", "recipient"] as const) {
+        conversation = submit(conversation, role, sitting, validSitting(sitting, role));
+      }
+    }
+    loadBenvolio.mockResolvedValue({ role: "recipient", partnerName: "Jane", conversation });
+    await expect(deleteBenvolio(formData({ benvolio_id: ID }))).rejects.toThrow("redirect /");
+    expect(loadBenvolio).toHaveBeenCalledWith(ID, "rhonda");
+    expect(from).toHaveBeenCalledWith("benvolios");
+    expect(eq).toHaveBeenCalledWith("id", ID);
+    // Sitting 3 writes round 3.
+    expect(trackServer).toHaveBeenCalledExactlyOnceWith("rhonda", "benvolio_deleted", {
+      benvolio_id: ID,
+      round: 3,
+    });
+  });
+
+  it("records round 1 before anything's written, and round 5 once it's finished", async () => {
+    loadBenvolio.mockResolvedValue({ role: "initiator", partnerName: "Rhonda", conversation: joined() });
+    await expect(deleteBenvolio(formData({ benvolio_id: ID }))).rejects.toThrow("redirect /");
+    expect(trackServer).toHaveBeenLastCalledWith("rhonda", "benvolio_deleted", { benvolio_id: ID, round: 1 });
+
+    let conversation = joined();
+    for (let sitting = 0; sitting <= 5; sitting++) {
+      for (const role of ["initiator", "recipient"] as const) {
+        conversation = submit(conversation, role, sitting, validSitting(sitting, role));
+      }
+    }
+    loadBenvolio.mockResolvedValue({ role: "initiator", partnerName: "Rhonda", conversation });
+    await expect(deleteBenvolio(formData({ benvolio_id: ID }))).rejects.toThrow("redirect /");
+    expect(trackServer).toHaveBeenLastCalledWith("rhonda", "benvolio_deleted", { benvolio_id: ID, round: 5 });
+  });
+
+  it("only goes home when it's already gone or not theirs", async () => {
+    loadBenvolio.mockResolvedValue(null);
+    await expect(deleteBenvolio(formData({ benvolio_id: ID }))).rejects.toThrow("redirect /");
+    expect(from).not.toHaveBeenCalled();
+    expect(trackServer).not.toHaveBeenCalled();
+  });
+
+  it("fails loudly if the database does", async () => {
+    loadBenvolio.mockResolvedValue({ role: "initiator", partnerName: "Rhonda", conversation: joined() });
+    eq.mockResolvedValue({ error: { message: "boom" } });
+    await expect(deleteBenvolio(formData({ benvolio_id: ID }))).rejects.toThrow("boom");
+    expect(trackServer).not.toHaveBeenCalled();
   });
 });
 
